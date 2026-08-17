@@ -3,376 +3,497 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Penjana Lembaran Kerja Prasekolah V4</title>
+    <title>Penjana Lembaran Kerja Prasekolah V5</title>
+    
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & Babel untuk GitHub Pages -->
+    
+    <!-- React & Babel Standalone (Membolehkan React berjalan terus di GitHub Pages) -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
     <!-- Font Jawi/Arab & Font Surih (Tracing) -->
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Mali:wght@300&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Mali:wght@300;600&display=swap" rel="stylesheet">
     
     <style>
-        .font-arabic { font-family: 'Amiri', serif; line-height: 1.4; }
-        .font-surih { font-family: 'Mali', cursive; color: #d1d5db; /* Kelabu cerah untuk tracing */ }
-        /* Gaya Cetak */
+        .font-arabic { font-family: 'Amiri', serif; line-height: 1.6; }
+        .font-surih { font-family: 'Mali', cursive; color: #cbd5e1; letter-spacing: 2px; }
+        
+        /* Tetapan khusus untuk mesin pencetak (Print) */
         @media print {
             body { background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
-            @page { size: A4 portrait; margin: 10mm; }
-            .a4-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; padding: 0 !important; }
+            @page { size: A4 portrait; margin: 0; }
+            .a4-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; border-radius: 0 !important; padding: 15mm !important; min-height: 297mm !important; display: flex !important; flex-direction: column !important;}
         }
     </style>
 </head>
-<body class="bg-amber-50 text-gray-900 min-h-screen font-sans">
+<body class="bg-emerald-50 text-gray-900 pb-10 min-h-screen font-sans">
 
-<div id="root"></div>
+    <div id="root"></div>
 
-<script type="text/babel">
-    const { useState, useEffect, useCallback } = React;
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
 
-    // --- PANGKALAN DATA LENGKAP DENGAN SUKU KATA (SK) ---
-    const dbGeneral = [
-        { emoji: '🍎', bm: 'Epal', sk: ['e','pal'], eng: 'Apple', jawi: 'ايڤل' },
-        { emoji: '🚗', bm: 'Kereta', sk: ['ke','re','ta'], eng: 'Car', jawi: 'کريتا' },
-        { emoji: '🐈', bm: 'Kucing', sk: ['ku','cing'], eng: 'Cat', jawi: 'کوچيڠ' },
-        { emoji: '👕', bm: 'Baju', sk: ['ba','ju'], eng: 'Shirt', jawi: 'باجو' },
-        { emoji: '📖', bm: 'Buku', sk: ['bu','ku'], eng: 'Book', jawi: 'بوکو' },
-        { emoji: '🐟', bm: 'Ikan', sk: ['i','kan'], eng: 'Fish', jawi: 'ايکن' },
-        { emoji: '🌺', bm: 'Bunga', sk: ['bu','nga'], eng: 'Flower', jawi: 'بوڠا' },
-        { emoji: '☀️', bm: 'Matahari', sk: ['ma','ta','ha','ri'], eng: 'Sun', jawi: 'ماتاهاري' },
-        { emoji: '🎱', bm: 'Bola', sk: ['bo','la'], eng: 'Ball', jawi: 'بولا' },
-        { emoji: '🚲', bm: 'Basikal', sk: ['ba','si','kal'], eng: 'Bicycle', jawi: 'باسيكل' },
-        { emoji: '🏠', bm: 'Rumah', sk: ['ru','mah'], eng: 'House', jawi: 'رومه' },
-        { emoji: '🥛', bm: 'Susu', sk: ['su','su'], eng: 'Milk', jawi: 'سوسو' },
-        { emoji: '👟', bm: 'Kasut', sk: ['ka','sut'], eng: 'Shoes', jawi: 'كاسوت' },
-        { emoji: '🪑', bm: 'Kerusi', sk: ['ke','ru','si'], eng: 'Chair', jawi: 'كروسي' }
-    ];
-
-    const dbArab = {
-        nombor: [{ emoji: '1️⃣', arab: 'وَاحِد' }, { emoji: '2️⃣', arab: 'اِثْنَان' }, { emoji: '3️⃣', arab: 'ثَلَاثَة' }, { emoji: '4️⃣', arab: 'أَرْبَعَة' }, { emoji: '5️⃣', arab: 'خَمْسَة' }, { emoji: '6️⃣', arab: 'سِتَّة' }, { emoji: '7️⃣', arab: 'سَبْعَة' }, { emoji: '8️⃣', arab: 'ثَمَانِيَة' }, { emoji: '9️⃣', arab: 'تِسْعَة' }, { emoji: '🔟', arab: 'عَشَرَة' }],
-        keluarga: [{ emoji: '👨', arab: 'أَب' }, { emoji: '👩', arab: 'أُم' }, { emoji: '👦', arab: 'أَخ' }, { emoji: '👧', arab: 'أُخْت' }, { emoji: '👴', arab: 'جَدّ' }, { emoji: '👵', arab: 'جَدَّة' }],
-        badan: [{ emoji: '👁️', arab: 'عَيْن' }, { emoji: '👂', arab: 'أُذُن' }, { emoji: '👃', arab: 'أَنْف' }, { emoji: '👄', arab: 'فَم' }, { emoji: '✋', arab: 'يَد' }, { emoji: '🦶', arab: 'رِجْل' }],
-        warna: [{ emoji: '🔴', arab: 'أَحْمَر' }, { emoji: '🔵', arab: 'أَزْرَق' }, { emoji: '🟢', arab: 'أَخْضَر' }, { emoji: '🟡', arab: 'أَصْفَر' }, { emoji: '⚫', arab: 'أَسْوَد' }, { emoji: '⚪', arab: 'أَبْيَض' }]
-    };
-
-    const dbSains = {
-        hidup: [{ emoji: '🐈', sains: 'Hidup' }, { emoji: '🌳', sains: 'Hidup' }, { emoji: '👦', sains: 'Hidup' }, { emoji: '🦅', sains: 'Hidup' }, { emoji: '🪨', sains: 'Bukan Hidup' }, { emoji: '🚗', sains: 'Bukan Hidup' }, { emoji: '📖', sains: 'Bukan Hidup' }, { emoji: '🧸', sains: 'Bukan Hidup' }],
-        bahagian: [{ emoji: '🍃', sains: 'Daun' }, { emoji: '🌳', sains: 'Batang' }, { emoji: '🦅', sains: 'Sayap' }, { emoji: '🐈', sains: 'Ekor' }, { emoji: '🐠', sains: 'Sirip' }, { emoji: '🦆', sains: 'Paruh' }],
-        makanan: [{ emoji: '🍎', sains: 'Sihat' }, { emoji: '🥦', sains: 'Sihat' }, { emoji: '🥛', sains: 'Sihat' }, { emoji: '🥕', sains: 'Sihat' }, { emoji: '🍬', sains: 'Tidak Sihat' }, { emoji: '🍩', sains: 'Tidak Sihat' }, { emoji: '🍟', sains: 'Tidak Sihat' }, { emoji: '🥤', sains: 'Tidak Sihat' }]
-    };
-
-    const subjects = [
-        { id: 'bm', name: 'Bahasa Melayu' }, { id: 'eng', name: 'Bahasa Inggeris' }, { id: 'jawi', name: 'Jawi' },
-        { id: 'math', name: 'Matematik' },
-        { id: 'arab', name: 'Bahasa Arab', subtopics: ['nombor', 'keluarga', 'badan', 'warna'] },
-        { id: 'sains', name: 'Sains', subtopics: ['hidup', 'bahagian', 'makanan'] },
-    ];
-
-    const subtopicLabels = { nombor: 'Nombor 1-10', keluarga: 'Keluarga', badan: 'Anggota Badan', warna: 'Warna', hidup: 'Benda Hidup/Bukan', bahagian: 'Bahagian Tubuh', makanan: 'Makanan Sihat/Tidak' };
-
-    // --- ARAHAN SOALAN ---
-    const getInstruction = (subjectId, pattern) => {
-        const instructions = {
-            pilih: { bm: 'Tandakan (✓) pada jawapan yang betul.', eng: 'Tick (✓) the correct answer.', jawi: 'تنداكن (✓) ڤد جواڤن يڠ بتول.', math: 'Kira dan tandakan (✓) jawapan yang betul.', arab: 'ضَعْ عَلَامَة (✓) عَلَى الإِجَابَةِ الصَّحِيحَةِ.', sains: 'Tandakan (✓) pada kategori yang betul.' },
-            bulatkan: { bm: 'Bulatkan jawapan yang betul.', eng: 'Circle the correct answer.', jawi: 'بولتكن جواڤن يڠ بتول.', math: 'Kira dan bulatkan nombor yang betul.', arab: 'ضَعْ دَائِرَةً حَوْلَ الإِجَابَةِ الصَّحِيحَةِ.', sains: 'Bulatkan kategori yang betul.' },
-            suaikan: { bm: 'Suaikan gambar dengan perkataan yang betul.', eng: 'Match the pictures correctly.', jawi: 'سوايکن ݢمبر دڠن ڤرکاتاءن يڠ بتول.', math: 'Kira dan suaikan dengan nombor yang betul.', arab: 'صِلِ الصُّورَةَ بِالكَلِمَةِ المُنَاسِبَةِ.', sains: 'Suaikan gambar dengan fakta yang betul.' },
-            tulis: { bm: 'Tuliskan nama gambar di bawah.', eng: 'Write the name of the picture.', jawi: 'توليسکن نام ݢمبر دباوه.', math: 'Kira dan tuliskan nombornya.', arab: 'اُكْتُبِ اسْمَ الصُّورَةِ.', sains: 'Tuliskan kategori yang betul.' },
-            surih: { bm: 'Surih perkataan di bawah.', eng: 'Trace the words below.', jawi: 'سوريه ڤرکاتاءن دباوه.', arab: 'تَتَبَّعِ الكَلِمَاتِ.', sains: 'Surih perkataan di bawah.' },
-            lengkapkan: { bm: 'Isikan huruf yang tertinggal.', eng: 'Fill in the missing letters.', jawi: 'ايسيکن حروف يڠ ترتيڠݢل.', arab: 'أَكْمِلِ الحُرُوفَ النَّاقِصَةَ.', sains: 'Lengkapkan perkataan.' },
-            sukukata: { bm: 'Gabungkan suku kata menjadi perkataan.' },
-            tambah: { math: 'Selesaikan operasi tambah.' }, tolak: { math: 'Selesaikan operasi tolak.' }
-        };
-        return instructions[pattern]?.[subjectId] || instructions[pattern]?.bm || 'Sila jawab soalan berikut.';
-    };
-
-    // --- FUNGSI UTILITI ---
-    const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
-    const randItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
-    
-    // Fungsi untuk membuat huruf hilang (Lengkapkan Huruf)
-    const createMissingLetters = (word, lang) => {
-        if (lang === 'jawi' || lang === 'arab') return word; // Belum menyokong Jawi/Arab untuk ini
-        let letters = word.split('');
-        let missingIndices = [];
-        // Hilangkan 1-2 huruf secara rawak (tapi bukan semua)
-        let numMissing = Math.max(1, Math.floor(letters.length / 3));
-        while (missingIndices.length < numMissing) {
-            let idx = Math.floor(Math.random() * letters.length);
-            if (!missingIndices.includes(idx)) missingIndices.push(idx);
-        }
-        return letters.map((l, i) => missingIndices.includes(i) ? '_' : l);
-    };
-
-    // --- KOMPONEN UTAMA ---
-    function App() {
-        const [sub, setSub] = useState('bm');
-        const [subTopic, setSubTopic] = useState('');
-        const [pat, setPat] = useState('pilih');
-        const [data, setData] = useState({ type: 'pilih', items: [] });
-
-        // Logik penukaran subjek yang selamat
-        const changeSubject = (newSub) => {
-            setSub(newSub);
-            setSubTopic(['arab','sains'].includes(newSub) ? subjects.find(s=>s.id===newSub).subtopics[0] : '');
-            // Reset pattern jika tidak sesuai dengan subjek baru
-            const mathPats = ['tambah','tolak'];
-            const bmPats = ['sukukata'];
-            const universalPats = ['pilih','bulatkan','suaikan','tulis','surih','lengkapkan'];
-
-            if (newSub === 'math') {
-                if (![...universalPats, ...mathPats].includes(pat) || pat === 'surih' || pat === 'lengkapkan') setPat('pilih');
-            } else if (newSub === 'bm') {
-                if (![...universalPats, ...bmPats].includes(pat)) setPat('pilih');
-            } else {
-                if (!universalPats.includes(pat)) setPat('pilih');
-            }
-        };
-
-        const generate = useCallback(() => {
-            const isMath = sub === 'math';
-            const targetLang = sub;
-            let db = dbGeneral;
-            if (sub === 'arab') db = dbArab[subTopic];
-            if (sub === 'sains') db = dbSains[subTopic];
-
-            let newData = { type: pat, items: [] };
-            const numQs = 6; // Standard 6 soalan per muka surat
-
-            // --- LOGIK PENJANAAN MENGIKUT CORAK ---
-            if (['pilih', 'bulatkan'].includes(pat)) {
-                // Pilih 6 item unik jika boleh, atau ulang jika pangkalan data kecil (fix untuk Sains)
-                let selected = shuffle(db).slice(0, numQs);
-                while (selected.length < numQs) selected.push(randItem(db));
-                
-                newData.items = selected.map(item => {
-                    let count = isMath ? Math.floor(Math.random()*7)+2 : 1;
-                    let correct = isMath ? count.toString() : item[targetLang];
-                    let wrong = '';
-                    if(isMath) {
-                        wrong = (count + (Math.random()>0.5?1:-1)).toString();
-                    } else {
-                        // Fix untuk Sains (pastikan wrong answer berbeza dari correct answer)
-                        let options = [...new Set(db.map(i => i[targetLang]))];
-                        wrong = options.find(o => o !== correct) || randItem(options);
-                    }
-                    return { emoji: item.emoji, count, options: shuffle([correct, wrong]) };
-                });
-            }
-            else if (pat === 'suaikan') {
-                // Fix untuk Sains: Benarkan jawapan berulang di sebelah kanan
-                let selectedLeft = shuffle(db).slice(0, 5); 
-                while(selectedLeft.length < 5) selectedLeft.push(randItem(db));
-
-                let left = selectedLeft.map((item, i) => ({
-                    id: i, emoji: item.emoji, count: isMath ? Math.floor(Math.random()*7)+2 : 1, correctText: isMath ? null : item[targetLang]
-                }));
-                let right = shuffle(left.map(l => ({
-                    id: l.id, text: isMath ? l.count.toString() : l.correctText
-                })));
-                newData = { type: 'suaikan', left, right };
-            }
-            else if (['tulis', 'surih'].includes(pat)) {
-                let selected = shuffle(db).slice(0, numQs);
-                while (selected.length < numQs) selected.push(randItem(db));
-                newData.items = selected.map(item => ({
-                    emoji: item.emoji, count: isMath ? Math.floor(Math.random()*7)+2 : 1, text: item[targetLang]
-                }));
-            }
-            else if (pat === 'lengkapkan' && !isMath) {
-                let selected = shuffle(db.filter(i => i[targetLang].length > 2)).slice(0, numQs);
-                 while (selected.length < numQs) selected.push(randItem(db.filter(i => i[targetLang].length > 2)));
-                newData.items = selected.map(item => ({
-                    emoji: item.emoji, fullText: item[targetLang], splitText: createMissingLetters(item[targetLang], sub)
-                }));
-            }
-            else if (pat === 'sukukata' && sub === 'bm') {
-                let dbSK = dbGeneral.filter(i => i.sk);
-                let selected = shuffle(dbSK).slice(0, 5);
-                newData.items = selected.map(item => ({ emoji: item.emoji, sk: item.sk, full: item.bm }));
-            }
-            else if (pat === 'tambah' || pat === 'tolak') {
-                let qs = [];
-                for(let i=0; i<5; i++){
-                    let n1 = Math.floor(Math.random()*5)+2;
-                    let n2 = Math.floor(Math.random()*n1)+1;
-                    qs.push({ emoji: randItem(dbGeneral).emoji, n1: pat==='tambah'?n1:n1+n2, n2, op: pat==='tambah'?'+':'-' });
-                }
-                newData.items = qs;
-            }
-
-            setData(newData);
-        }, [sub, subTopic, pat]);
-
-        useEffect(() => { generate(); }, [generate]);
-
-        const isRTL = ['jawi', 'arab'].includes(sub);
-        const currentSubName = subjects.find(s=>s.id===sub).name;
-        const availablePatterns = [
-            {id:'pilih', name:'Tandakan ✓', all:true}, {id:'bulatkan', name:'Bulatkan', all:true},
-            {id:'suaikan', name:'Suaikan', all:true}, {id:'tulis', name:'Tulis Jawapan', all:true},
-            {id:'surih', name:'Surih (Trace)', exclude:['math']},
-            {id:'lengkapkan', name:'Isi Huruf', exclude:['math','jawi','arab']},
-            {id:'sukukata', name:'Suku Kata', only:['bm']},
-            {id:'tambah', name:'Tambah (+)', only:['math']}, {id:'tolak', name:'Tolak (-)', only:['math']}
+        // --- PANGKALAN DATA (DIKEMASKINI PENUH) ---
+        const dbGeneral = [
+            { emoji: '🍎', bm: 'Epal', sk: ['e','pal'], eng: 'Apple', jawi: 'ايڤل' },
+            { emoji: '🚗', bm: 'Kereta', sk: ['ke','re','ta'], eng: 'Car', jawi: 'کريتا' },
+            { emoji: '🐈', bm: 'Kucing', sk: ['ku','cing'], eng: 'Cat', jawi: 'کوچيڠ' },
+            { emoji: '👕', bm: 'Baju', sk: ['ba','ju'], eng: 'Shirt', jawi: 'باجو' },
+            { emoji: '📖', bm: 'Buku', sk: ['bu','ku'], eng: 'Book', jawi: 'بوکو' },
+            { emoji: '🐟', bm: 'Ikan', sk: ['i','kan'], eng: 'Fish', jawi: 'ايکن' },
+            { emoji: '🌺', bm: 'Bunga', sk: ['bu','nga'], eng: 'Flower', jawi: 'بوڠا' },
+            { emoji: '☀️', bm: 'Matahari', sk: ['ma','ta','ha','ri'], eng: 'Sun', jawi: 'ماتاهاري' },
+            { emoji: '⚽', bm: 'Bola', sk: ['bo','la'], eng: 'Ball', jawi: 'بولا' },
+            { emoji: '🚲', bm: 'Basikal', sk: ['ba','si','kal'], eng: 'Bicycle', jawi: 'باسيكل' },
+            { emoji: '🏠', bm: 'Rumah', sk: ['ru','mah'], eng: 'House', jawi: 'رومه' },
+            { emoji: '🥛', bm: 'Susu', sk: ['su','su'], eng: 'Milk', jawi: 'سوسو' },
+            { emoji: '👟', bm: 'Kasut', sk: ['ka','sut'], eng: 'Shoes', jawi: 'كاسوت' },
+            { emoji: '🪑', bm: 'Kerusi', sk: ['ke','ru','si'], eng: 'Chair', jawi: 'كروسي' },
+            { emoji: '☔', bm: 'Payung', sk: ['pa','yung'], eng: 'Umbrella', jawi: 'ڤايوڠ' },
+            { emoji: '🦅', bm: 'Burung', sk: ['bu','rung'], eng: 'Bird', jawi: 'بوروڠ' },
+            { emoji: '🥕', bm: 'Lobak', sk: ['lo','bak'], eng: 'Carrot', jawi: 'لوبق' },
+            { emoji: '✏️', bm: 'Pensel', sk: ['pen','sel'], eng: 'Pencil', jawi: 'ڤينسيل' }
         ];
 
-        return (
-            <div className="max-w-4xl mx-auto">
-                {/* --- PANEL KAWALAN (Screen Only) --- */}
-                <div className="no-print bg-white p-6 rounded-b-2xl shadow-xl border-t-8 border-amber-400 mb-8">
-                    <h1 className="text-2xl font-bold text-center text-amber-600 mb-4">✨ Penjana Lembaran Kerja Pra V4 ✨</h1>
+        const dbArab = {
+            nombor: [{ emoji: '1️⃣', arab: 'وَاحِد' }, { emoji: '2️⃣', arab: 'اِثْنَان' }, { emoji: '3️⃣', arab: 'ثَلَاثَة' }, { emoji: '4️⃣', arab: 'أَرْبَعَة' }, { emoji: '5️⃣', arab: 'خَمْسَة' }, { emoji: '6️⃣', arab: 'سِتَّة' }, { emoji: '7️⃣', arab: 'سَبْعَة' }, { emoji: '8️⃣', arab: 'ثَمَانِيَة' }, { emoji: '9️⃣', arab: 'تِسْعَة' }, { emoji: '🔟', arab: 'عَشَرَة' }],
+            keluarga: [{ emoji: '👨', arab: 'أَب' }, { emoji: '👩', arab: 'أُم' }, { emoji: '👦', arab: 'أَخ' }, { emoji: '👧', arab: 'أُخْت' }, { emoji: '👴', arab: 'جَدّ' }, { emoji: '👵', arab: 'جَدَّة' }],
+            badan: [{ emoji: '👁️', arab: 'عَيْن' }, { emoji: '👂', arab: 'أُذُن' }, { emoji: '👃', arab: 'أَنْف' }, { emoji: '👄', arab: 'فَم' }, { emoji: '✋', arab: 'يَد' }, { emoji: '🦶', arab: 'رِجْل' }],
+            sekolah: [{ emoji: '📖', arab: 'كِتَاب' }, { emoji: '🖊️', arab: 'قَلَم' }, { emoji: '🎒', arab: 'حَقِيبَة' }, { emoji: '📏', arab: 'مِسْطَرَة' }, { emoji: '📝', arab: 'وَرَقَة' }, { emoji: '✂️', arab: 'مِقَصّ' }],
+            warna: [{ emoji: '🔴', arab: 'أَحْمَر' }, { emoji: '🔵', arab: 'أَزْرَق' }, { emoji: '🟢', arab: 'أَخْضَر' }, { emoji: '🟡', arab: 'أَصْفَر' }, { emoji: '⚫', arab: 'أَسْوَد' }, { emoji: '⚪', arab: 'أَبْيَض' }]
+        };
+
+        const dbSains = {
+            hidup: [{ emoji: '🐈', sains: 'Benda Hidup' }, { emoji: '🌳', sains: 'Benda Hidup' }, { emoji: '👦', sains: 'Benda Hidup' }, { emoji: '🦅', sains: 'Benda Hidup' }, { emoji: '🪨', sains: 'Bukan Hidup' }, { emoji: '🚗', sains: 'Bukan Hidup' }, { emoji: '📖', sains: 'Bukan Hidup' }, { emoji: '🧸', sains: 'Bukan Hidup' }],
+            bahagian: [{ emoji: '🍃', sains: 'Daun' }, { emoji: '🌺', sains: 'Bunga' }, { emoji: '🌳', sains: 'Batang' }, { emoji: '🦅', sains: 'Sayap' }, { emoji: '🐈', sains: 'Ekor' }, { emoji: '🐠', sains: 'Sirip' }, { emoji: '🐘', sains: 'Gading' }, { emoji: '🦆', sains: 'Paruh' }],
+            serapan: [{ emoji: '🧽', sains: 'Menyerap Air' }, { emoji: '👕', sains: 'Menyerap Air' }, { emoji: '🧻', sains: 'Menyerap Air' }, { emoji: '🧦', sains: 'Menyerap Air' }, { emoji: '☔', sains: 'Kalis Air' }, { emoji: '🛍️', sains: 'Kalis Air' }, { emoji: '👢', sains: 'Kalis Air' }, { emoji: '🧤', sains: 'Kalis Air' }],
+            makanan: [{ emoji: '🍎', sains: 'Makanan Sihat' }, { emoji: '🥦', sains: 'Makanan Sihat' }, { emoji: '🥛', sains: 'Makanan Sihat' }, { emoji: '🥕', sains: 'Makanan Sihat' }, { emoji: '🍬', sains: 'Tidak Sihat' }, { emoji: '🍩', sains: 'Tidak Sihat' }, { emoji: '🍟', sains: 'Tidak Sihat' }, { emoji: '🥤', sains: 'Tidak Sihat' }]
+        };
+
+        const subjects = [
+            { id: 'bm', name: 'Bahasa Melayu' }, { id: 'eng', name: 'Bahasa Inggeris' }, { id: 'jawi', name: 'Jawi' }, { id: 'math', name: 'Matematik' },
+            { id: 'arab', name: 'Bahasa Arab', subtopics: ['nombor', 'keluarga', 'badan', 'sekolah', 'warna'] },
+            { id: 'sains', name: 'Sains', subtopics: ['hidup', 'bahagian', 'serapan', 'makanan'] },
+        ];
+
+        const subtopicLabels = {
+            nombor: 'Nombor 1-10', keluarga: 'Keluarga Saya', badan: 'Anggota Badan', sekolah: 'Peralatan Sekolah', warna: 'Warna',
+            hidup: 'Hidup / Bukan Hidup', bahagian: 'Bahagian Tubuh', serapan: 'Serapan Air', makanan: 'Makanan Sihat/Tidak'
+        };
+
+        const getInstruction = (subjectId, pattern) => {
+            const instructions = {
+                pilih: { bm: 'Tandakan (✓) pada jawapan yang betul.', eng: 'Tick (✓) the correct answer.', jawi: 'تنداكن (✓) ڤد جواڤن يڠ بتول.', math: 'Kira dan tandakan (✓) jawapan yang betul.', arab: 'ضَعْ عَلَامَة (✓) عَلَى الإِجَابَةِ الصَّحِيحَةِ.', sains: 'Tandakan (✓) pada kategori yang betul.' },
+                bulatkan: { bm: 'Bulatkan jawapan yang betul.', eng: 'Circle the correct answer.', jawi: 'بولتكن جواڤن يڠ بتول.', math: 'Kira dan bulatkan nombor yang betul.', arab: 'ضَعْ دَائِرَةً حَوْلَ الإِجَابَةِ الصَّحِيحَةِ.', sains: 'Bulatkan kategori yang betul.' },
+                suaikan: { bm: 'Suaikan gambar dengan padanan yang betul.', eng: 'Match the pictures correctly.', jawi: 'سوايکن ݢمبر دڠن ڤادنن يڠ بتول.', math: 'Kira dan suaikan dengan nombor yang betul.', arab: 'صِلِ الصُّورَةَ بِالكَلِمَةِ المُنَاسِبَةِ.', sains: 'Suaikan gambar dengan fakta yang betul.' },
+                tulis: { bm: 'Tuliskan nama gambar di bawah.', eng: 'Write the correct word for each picture.', jawi: 'توليسکن نام ݢمبر دباوه.', math: 'Kira dan tuliskan nombor yang betul.', arab: 'اُكْتُبِ الكَلِمَةَ المُنَاسِبَةَ لِكُلِّ صُورَةٍ.', sains: 'Tuliskan kategori yang betul.' },
+                surih: { bm: 'Surih (trace) perkataan di bawah.', eng: 'Trace the words below.', jawi: 'سوريه ڤرکاتاءن دباوه.', arab: 'تَتَبَّعِ الكَلِمَاتِ.', sains: 'Surih (trace) perkataan di bawah.' },
+                lengkapkan: { bm: 'Isikan huruf yang tertinggal.', eng: 'Fill in the missing letters.', sains: 'Isikan huruf yang tertinggal.' },
+                sukukata: { bm: 'Gabungkan suku kata menjadi perkataan.' },
+                tambah: { math: 'Selesaikan operasi tambah di bawah.' }, tolak: { math: 'Selesaikan operasi tolak di bawah.' }
+            };
+            return instructions[pattern]?.[subjectId] || 'Sila jawab soalan di bawah.';
+        };
+
+        // --- FUNGSI UTILITI ---
+        const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+        const randItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        
+        const createMissingLetters = (word) => {
+            let letters = word.split('');
+            let missingIndices = [];
+            let numMissing = Math.max(1, Math.floor(letters.length / 3));
+            while (missingIndices.length < numMissing) {
+                let idx = Math.floor(Math.random() * letters.length);
+                if (!missingIndices.includes(idx)) missingIndices.push(idx);
+            }
+            return letters.map((l, i) => missingIndices.includes(i) ? '_' : l);
+        };
+
+        // --- KOMPONEN UTAMA ---
+        function App() {
+            const [activeSubject, setActiveSubject] = useState('bm');
+            const [activeSubtopic, setActiveSubtopic] = useState('');
+            const [activePattern, setActivePattern] = useState('pilih');
+            const [worksheetData, setWorksheetData] = useState({ type: 'pilih', items: [] });
+
+            const handleSubjectChange = (subjectId) => {
+                let nextSubtopic = '';
+                if (subjectId === 'arab') nextSubtopic = 'nombor';
+                else if (subjectId === 'sains') nextSubtopic = 'hidup';
+                
+                // Rules for valid patterns per subject
+                const universalPats = ['pilih','bulatkan','suaikan','tulis'];
+                const allowSurih = ['bm','eng','jawi','arab','sains'];
+                const allowIsi = ['bm','eng','sains'];
+                
+                let nextPattern = activePattern;
+                if (subjectId === 'math') {
+                    if(!['pilih','bulatkan','suaikan','tulis','tambah','tolak'].includes(nextPattern)) nextPattern = 'pilih';
+                } else if (subjectId === 'bm') {
+                    if(![...universalPats, 'surih', 'lengkapkan', 'sukukata'].includes(nextPattern)) nextPattern = 'pilih';
+                } else {
+                    if(nextPattern === 'surih' && !allowSurih.includes(subjectId)) nextPattern = 'pilih';
+                    if(nextPattern === 'lengkapkan' && !allowIsi.includes(subjectId)) nextPattern = 'pilih';
+                    if(['tambah','tolak','sukukata'].includes(nextPattern)) nextPattern = 'pilih';
+                }
+
+                setActiveSubject(subjectId);
+                setActiveSubtopic(nextSubtopic);
+                setActivePattern(nextPattern);
+            };
+
+            const generateWorksheet = useCallback(() => {
+                const isMath = activeSubject === 'math';
+                const targetLang = activeSubject;
+                let db = dbGeneral;
+                
+                if (activeSubject === 'arab') db = dbArab[activeSubtopic || 'nombor'];
+                else if (activeSubject === 'sains') db = dbSains[activeSubtopic || 'hidup'];
+
+                let newData = { type: activePattern, items: [] };
+                
+                // Adjust number of questions to perfectly fit A4 (Flex-grow will handle the spacing)
+                let numQs = 6; 
+                if (activePattern === 'suaikan' || activePattern === 'sukukata' || activePattern === 'tambah' || activePattern === 'tolak') numQs = 5;
+                if (activePattern === 'lengkapkan') numQs = 6;
+
+                if (['pilih', 'bulatkan'].includes(activePattern)) {
+                    let uniqueItems = [...new Map(db.map(item => [item.emoji, item])).values()];
+                    let selected = shuffle(uniqueItems).slice(0, numQs);
+                    while (selected.length < numQs) selected.push(randItem(db)); // fallback
+
+                    newData.items = selected.map(item => {
+                        let count = isMath ? Math.floor(Math.random() * 8) + 2 : 1;
+                        let correct = isMath ? count.toString() : item[targetLang];
+                        let wrong = '';
+                        if (isMath) {
+                            wrong = (count + (Math.random() > 0.5 ? 1 : -1)).toString();
+                        } else {
+                            let optionsAvailable = [...new Set(db.map(i => i[targetLang]))];
+                            if (activeSubject === 'sains' && optionsAvailable.length === 2) {
+                                wrong = optionsAvailable.find(opt => opt !== correct) || '';
+                            } else {
+                                let wrongItem = randItem(db);
+                                let attempts = 0;
+                                while (wrongItem[targetLang] === correct && attempts < 10) { wrongItem = randItem(db); attempts++; }
+                                wrong = wrongItem[targetLang] || '';
+                            }
+                        }
+                        return { emoji: item.emoji, count, options: shuffle([correct, wrong]) };
+                    });
+                } 
+                else if (activePattern === 'suaikan') {
+                    let selectedLeft = shuffle(db).slice(0, numQs);
+                    while(selectedLeft.length < numQs) selectedLeft.push(randItem(db));
+
+                    newData.left = selectedLeft.map((item, i) => ({
+                        id: i, emoji: item.emoji, count: isMath ? Math.floor(Math.random() * 8) + 2 : 1, text: item[targetLang]
+                    }));
+                    newData.right = shuffle(newData.left.map(l => ({
+                        id: l.id, text: isMath ? l.count.toString() : l.text
+                    })));
+                }
+                else if (['tulis', 'surih'].includes(activePattern)) {
+                    let selected = shuffle(db).slice(0, numQs);
+                    while (selected.length < numQs) selected.push(randItem(db));
+                    newData.items = selected.map(item => ({
+                        emoji: item.emoji, count: isMath ? Math.floor(Math.random() * 8) + 2 : 1, text: item[targetLang]
+                    }));
+                }
+                else if (activePattern === 'lengkapkan') {
+                    let validDb = db.filter(i => i[targetLang] && i[targetLang].length > 2);
+                    if(validDb.length === 0) validDb = db;
+                    let selected = shuffle(validDb).slice(0, numQs);
+                    while (selected.length < numQs) selected.push(randItem(validDb));
+                    newData.items = selected.map(item => ({
+                        emoji: item.emoji, splitText: createMissingLetters(item[targetLang])
+                    }));
+                }
+                else if (activePattern === 'sukukata') {
+                    let dbSK = dbGeneral.filter(i => i.sk);
+                    let selected = shuffle(dbSK).slice(0, numQs);
+                    newData.items = selected.map(item => ({ emoji: item.emoji, sk: item.sk }));
+                }
+                else if (activePattern === 'tambah' || activePattern === 'tolak') {
+                    let qs = [];
+                    for(let i=0; i<numQs; i++) {
+                        let total = Math.floor(Math.random() * 6) + 4; // 4 to 9
+                        let sub = Math.floor(Math.random() * (total - 1)) + 1; // 1 to total-1
+                        qs.push({ 
+                            emoji: randItem(dbGeneral).emoji, 
+                            c1: activePattern === 'tambah' ? total-sub : total, 
+                            c2: sub, 
+                            op: activePattern === 'tambah' ? '+' : '-' 
+                        });
+                    }
+                    newData.items = qs;
+                }
+
+                setWorksheetData(newData);
+            }, [activeSubject, activeSubtopic, activePattern]);
+
+            useEffect(() => {
+                generateWorksheet();
+            }, [generateWorksheet]);
+
+            const currentSubject = subjects.find(s => s.id === activeSubject);
+            const isRTL = activeSubject === 'jawi' || activeSubject === 'arab';
+
+            // Available patterns logic
+            const availablePatterns = [
+                {id:'pilih', name:'Tandakan ✓', all:true}, {id:'bulatkan', name:'Bulatkan Jawapan', all:true},
+                {id:'suaikan', name:'Suaikan Garis', all:true}, {id:'tulis', name:'Tulis Jawapan', all:true},
+                {id:'surih', name:'Surih (Trace)', allow:['bm','eng','jawi','arab','sains']},
+                {id:'lengkapkan', name:'Isi Huruf', allow:['bm','eng','sains']},
+                {id:'sukukata', name:'Suku Kata', only:['bm']},
+                {id:'tambah', name:'Operasi Tambah (+)', only:['math']}, {id:'tolak', name:'Operasi Tolak (-)', only:['math']}
+            ];
+
+            return (
+                <div className="w-full flex flex-col items-center">
                     
-                    {/* Pilih Subjek */}
-                    <div className="flex flex-wrap justify-center gap-2 mb-4">
-                        {subjects.map(s => (
-                            <button key={s.id} onClick={()=>changeSubject(s.id)} className={`px-4 py-2 rounded-full font-bold text-sm ${sub===s.id ? 'bg-amber-500 text-white':'bg-gray-100'}`}>{s.name}</button>
-                        ))}
-                    </div>
-
-                    {/* Pilih Topik (Arab/Sains) */}
-                    {subjects.find(s=>s.id===sub).subtopics && (
-                        <div className="flex flex-wrap justify-center gap-2 mb-4 bg-amber-50 p-3 rounded-xl">
-                            {subjects.find(s=>s.id===sub).subtopics.map(st => (
-                                <button key={st} onClick={()=>setSubTopic(st)} className={`px-3 py-1 rounded-md text-sm ${subTopic===st ? 'bg-orange-400 text-white':'bg-white border'}`}>{subtopicLabels[st]}</button>
-                            ))}
+                    {/* PANEL KAWALAN */}
+                    <div className="no-print bg-white shadow-xl p-6 mb-8 w-full max-w-5xl rounded-b-2xl border-t-8 border-emerald-500">
+                        <h1 className="text-3xl font-extrabold text-center mb-6 text-emerald-600">
+                            ✅ Penjana Lembaran Pra V5 (Lengkap)
+                        </h1>
+                        
+                        <div className="mb-5">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">1. Pilih Subjek</p>
+                            <div className="flex flex-wrap justify-center gap-2">
+                                {subjects.map((sub) => (
+                                    <button key={sub.id} onClick={() => handleSubjectChange(sub.id)}
+                                        className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                                            activeSubject === sub.id ? 'bg-emerald-500 text-white shadow-md transform scale-105' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                                        }`}>
+                                        {sub.name}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    )}
 
-                    {/* Pilih Corak Soalan (Dinamik) */}
-                    <div className="flex flex-wrap justify-center gap-2 mb-6 border-t pt-4">
-                        {availablePatterns.filter(p => {
-                            if(p.all && !p.exclude?.includes(sub)) return true;
-                            if(p.only?.includes(sub)) return true;
-                            return false;
-                        }).map(p => (
-                            <button key={p.id} onClick={()=>setPat(p.id)} className={`px-4 py-2 rounded-lg border-2 font-semibold text-sm ${pat===p.id ? 'border-amber-500 bg-amber-50 text-amber-700':'border-gray-300 text-gray-600'}`}>{p.name}</button>
-                        ))}
+                        {currentSubject?.subtopics && (
+                            <div className="mb-5 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-3 text-center">
+                                    📖 Topik Khusus {currentSubject.name}
+                                </p>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {currentSubject.subtopics.map((st) => (
+                                        <button key={st} onClick={() => setActiveSubtopic(st)}
+                                            className={`px-4 py-1.5 rounded-full font-semibold text-sm transition-all ${
+                                                activeSubtopic === st ? 'bg-amber-400 text-amber-900 shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            }`}>
+                                            {subtopicLabels[st]}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mb-6 border-t pt-5">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">2. Pilih Corak Soalan</p>
+                            <div className="flex flex-wrap justify-center gap-3">
+                                {availablePatterns.filter(p => p.all || (p.allow && p.allow.includes(activeSubject)) || (p.only && p.only.includes(activeSubject))).map(p => (
+                                    <button key={p.id} onClick={() => setActivePattern(p.id)} 
+                                    className={`px-4 py-2 rounded-full border-2 font-bold ${activePattern === p.id ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-inner' : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                                        {p.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center gap-4 border-t pt-6 bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-xl">
+                            <button onClick={generateWorksheet} className="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-xl shadow-md transition-transform hover:scale-105">
+                                🔄 Jana Semula
+                            </button>
+                            <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-transform hover:scale-105">
+                                🖨️ Cetak (Saiz A4)
+                            </button>
+                        </div>
                     </div>
 
-                     <div className="flex justify-center gap-4">
-                        <button onClick={generate} className="bg-teal-500 text-white px-6 py-2 rounded-full font-bold shadow hover:bg-teal-600">🔄 Jana Baru</button>
-                        <button onClick={()=>window.print()} className="bg-blue-600 text-white px-6 py-2 rounded-full font-bold shadow hover:bg-blue-700">🖨️ Cetak A4</button>
-                    </div>
-                </div>
+                    {/* KERTAS A4 UNTUK DICETAK */}
+                    <div className="a4-page max-w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[15mm] border border-gray-200 relative overflow-hidden rounded-md flex flex-col">
+                        
+                        {/* Hiasan Bucu (Cetak) */}
+                        <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-r from-emerald-400 via-amber-300 to-sky-400 opacity-90"></div>
+                        <div className="absolute top-4 left-4 text-3xl opacity-20">✏️</div>
+                        <div className="absolute top-10 right-10 text-3xl opacity-20">🎨</div>
 
-                {/* --- KERTAS A4 (Printable Area) --- */}
-                <div className="a4-page bg-white shadow-2xl mx-auto p-8 relative overflow-hidden min-h-[297mm]">
-                    <div className="border-b-2 border-dashed border-gray-400 pb-2 mb-6 flex justify-between text-lg font-bold">
-                        <div>Nama: ____________________</div><div>Tarikh: __________</div>
-                    </div>
-                    <div className="text-center mb-8">
-                        <h2 className="text-3xl font-extrabold text-amber-700 uppercase">{currentSubName} {subTopic && `- ${subtopicLabels[subTopic]}`}</h2>
-                        <p className={`text-xl font-bold text-gray-700 ${isRTL?'font-arabic':''}`} dir={isRTL?'rtl':'ltr'}>{getInstruction(sub, pat)}</p>
-                    </div>
+                        {/* Nama / Tarikh */}
+                        <div className="flex justify-between items-end border-b-2 border-dashed border-gray-400 pb-2 mb-6 text-lg font-bold mt-4">
+                            <div className="flex gap-2 w-7/12 items-end">
+                                <span className="text-gray-800">Nama:</span>
+                                <div className="border-b-2 border-gray-700 flex-1"></div>
+                            </div>
+                            <div className="flex gap-2 w-4/12 items-end">
+                                <span className="text-gray-800">Tarikh:</span>
+                                <div className="border-b-2 border-gray-700 flex-1"></div>
+                            </div>
+                        </div>
 
-                    {/* RENDERER: PILIH / BULATKAN */}
-                    {['pilih','bulatkan'].includes(data.type) && (
-                        <div className="grid grid-cols-2 gap-6">
-                            {data.items.map((q, i) => (
-                                <div key={i} className="border-2 border-gray-300 rounded-xl p-4 flex flex-col items-center bg-amber-50">
-                                    <div className="flex gap-1 mb-4">{Array(q.count).fill().map((_,j)=><span key={j} className="text-5xl">{q.emoji}</span>)}</div>
-                                    <div className={`flex gap-4 w-full justify-around ${isRTL?'font-arabic text-2xl':''}`} dir={isRTL?'rtl':'ltr'}>
-                                        {q.options.map((opt, k) => (
-                                            <div key={k} className={`flex items-center gap-2 ${pat==='bulatkan'?'border-2 border-dashed border-gray-400 rounded-full px-4 py-1':''}`}>
-                                                {pat==='pilih' && <div className="w-6 h-6 border-2 border-gray-400 rounded bg-white"></div>}
-                                                <span className="font-bold text-xl">{opt}</span>
+                        {/* Tajuk Soalan */}
+                        <div className="text-center mb-8 bg-emerald-50 py-3 rounded-2xl border-2 border-emerald-100">
+                            <h2 className="text-4xl font-extrabold tracking-wide mb-2 text-emerald-700 uppercase">
+                                {currentSubject.name} {activeSubtopic ? `- ${subtopicLabels[activeSubtopic]}` : ''}
+                            </h2>
+                            <p className={`text-xl font-bold text-gray-700 ${isRTL ? 'font-arabic text-2xl' : ''}`} dir={isRTL ? "rtl" : "ltr"}>
+                                {getInstruction(activeSubject, activePattern)}
+                            </p>
+                        </div>
+
+                        {/* CONTAINER RENDERER SOALAN (FLEX-1 UNTUK MEREGANG KE BAWAH) */}
+                        <div className="flex-1 flex flex-col justify-between pb-8">
+                            
+                            {/* 1. TANDAKAN & BULATKAN */}
+                            {['pilih', 'bulatkan'].includes(worksheetData.type) && (
+                                <div className="grid grid-cols-2 gap-x-6 h-full gap-y-6">
+                                    {worksheetData.items.map((q, idx) => (
+                                        <div key={idx} className="flex flex-col border-4 border-gray-100 rounded-2xl overflow-hidden shadow-sm bg-gray-50">
+                                            <div className="flex-1 bg-white flex flex-wrap justify-center items-center gap-1 p-2 border-b-4 border-gray-100 min-h-[100px]">
+                                                {Array.from({ length: q.count }).map((_, i) => (
+                                                    <span key={i} className={q.count > 4 ? "text-4xl" : "text-5xl"} style={{ filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.1))' }}>{q.emoji}</span>
+                                                ))}
+                                            </div>
+                                            <div className={`flex w-full justify-around items-center h-16 ${isRTL ? 'font-arabic text-3xl' : 'text-2xl'} ${activeSubject === 'sains' ? 'text-lg font-bold' : 'font-extrabold'}`} dir={isRTL ? "rtl" : "ltr"}>
+                                                {q.options.map((opt, i) => (
+                                                    <div key={i} className={`flex items-center gap-2 ${worksheetData.type === 'bulatkan' ? 'border-2 border-dashed border-gray-400 rounded-full px-4 py-1 bg-white' : ''}`}>
+                                                        {worksheetData.type === 'pilih' && <div className="w-6 h-6 border-2 border-gray-400 rounded bg-white"></div>}
+                                                        <span>{opt}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* 2. SUAIKAN */}
+                            {worksheetData.type === 'suaikan' && (
+                                <div className="flex justify-between w-full h-full px-8">
+                                    <div className="flex flex-col justify-between h-full w-[45%]">
+                                        {worksheetData.left?.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-4">
+                                                <div className="flex-1 h-[90px] border-4 border-emerald-100 rounded-2xl flex flex-wrap justify-center items-center p-2 bg-white shadow-sm">
+                                                    {Array.from({ length: item.count }).map((_, i) => <span key={i} className={item.count > 4 ? "text-3xl" : "text-4xl"}>{item.emoji}</span>)}
+                                                </div>
+                                                <div className="w-4 h-4 rounded-full bg-emerald-400 shadow-md"></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex flex-col justify-between h-full w-[45%] items-end">
+                                        {worksheetData.right?.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-4 w-full justify-end">
+                                                <div className="w-4 h-4 rounded-full bg-amber-400 shadow-md"></div>
+                                                <div className={`flex-1 h-[90px] border-4 border-amber-100 rounded-2xl flex justify-center items-center text-2xl font-extrabold text-gray-800 p-4 text-center bg-white shadow-sm ${isRTL ? 'font-arabic text-3xl' : ''}`} dir={isRTL ? "rtl" : "ltr"}>{item.text}</div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            )}
 
-                    {/* RENDERER: SUAIKAN */}
-                    {data.type === 'suaikan' && (
-                        <div className="flex justify-between px-4 mt-4">
-                            <div className="flex flex-col gap-8">
-                                {data.left.map(i => (
-                                    <div key={i.id} className="flex items-center gap-2"><div className="border-2 border-amber-300 p-2 rounded-lg bg-white w-32 flex justify-center flex-wrap">{Array(i.count).fill().map((_,j)=><span key={j} className="text-4xl">{i.emoji}</span>)}</div><div className="w-4 h-4 bg-amber-500 rounded-full"></div></div>
-                                ))}
-                            </div>
-                            <div className="flex flex-col gap-8 items-end">
-                                {data.right.map(i => (
-                                    <div key={i.id} className="flex items-center gap-2"><div className="w-4 h-4 bg-blue-500 rounded-full"></div><div className={`border-2 border-blue-300 p-4 rounded-lg bg-white w-40 text-center font-bold text-2xl ${isRTL?'font-arabic':''}`} dir={isRTL?'rtl':'ltr'}>{i.text}</div></div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* RENDERER: TULIS / SURIH */}
-                    {['tulis','surih'].includes(data.type) && (
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                            {data.items.map((q, i) => (
-                                <div key={i} className="flex items-center gap-4 border-b-2 border-dashed pb-4">
-                                    <div className="w-24 flex justify-center flex-wrap bg-amber-100 rounded p-2">{Array(q.count).fill().map((_,j)=><span key={j} className="text-4xl">{q.emoji}</span>)}</div>
-                                    {pat === 'tulis' ? (
-                                        sub==='math' ? <div className="w-16 h-16 border-2 border-gray-400 rounded bg-white"></div> : 
-                                        <div className="flex-1 border-b-2 border-gray-400 h-12 relative"><div className="absolute top-1/2 w-full border-t border-dashed border-gray-300"></div></div>
-                                    ) : (
-                                        <div className={`flex-1 text-center text-4xl font-surih ${isRTL?'font-arabic':''}`}>{q.text}</div>
-                                    )}
+                            {/* 3. TULIS & SURIH */}
+                            {['tulis', 'surih'].includes(worksheetData.type) && (
+                                <div className="grid grid-cols-2 gap-x-10 h-full gap-y-8">
+                                    {worksheetData.items.map((item, idx) => (
+                                        <div key={idx} className="flex flex-col items-center w-full h-full border-b-2 border-dashed border-gray-300 pb-2">
+                                            <div className="w-full flex-1 border-4 border-gray-100 rounded-2xl flex flex-wrap justify-center items-center p-2 bg-gray-50 shadow-sm mb-4 min-h-[100px]">
+                                                {Array.from({ length: item.count }).map((_, i) => <span key={i} className={item.count > 4 ? "text-3xl" : "text-4xl"}>{item.emoji}</span>)}
+                                            </div>
+                                            {worksheetData.type === 'tulis' ? (
+                                                activeSubject === 'math' ? (
+                                                    <div className="w-20 h-20 border-4 border-gray-300 rounded-2xl bg-white shadow-inner mb-2"></div>
+                                                ) : (
+                                                    <div className="w-full h-12 border-b-4 border-gray-400 relative">
+                                                        <div className="absolute bottom-4 w-full border-b border-dashed border-gray-300"></div>
+                                                    </div>
+                                                )
+                                            ) : (
+                                                <div className={`w-full text-center text-5xl font-surih font-bold ${isRTL ? 'font-arabic' : ''}`} dir={isRTL ? "rtl" : "ltr"}>{item.text}</div>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            )}
 
-                    {/* RENDERER: LENGKAPKAH HURUF */}
-                    {data.type === 'lengkapkan' && (
-                        <div className="grid grid-cols-2 gap-6">
-                            {data.items.map((q, i) => (
-                                <div key={i} className="flex flex-col items-center border-2 border-gray-200 p-4 rounded-xl">
-                                    <span className="text-6xl mb-4">{q.emoji}</span>
-                                    <div className="flex gap-2">
-                                        {q.splitText.map((char, k) => (
-                                            char === '_' ? <div key={k} className="w-10 h-12 border-b-4 border-gray-500"></div> : <div key={k} className="w-10 h-12 flex justify-center items-end font-bold text-3xl">{char}</div>
-                                        ))}
-                                    </div>
+                            {/* 4. LENGKAPKAN HURUF */}
+                            {worksheetData.type === 'lengkapkan' && (
+                                <div className="grid grid-cols-2 gap-x-8 h-full gap-y-6">
+                                    {worksheetData.items.map((q, idx) => (
+                                        <div key={idx} className="flex flex-col items-center justify-center border-4 border-gray-100 p-4 rounded-3xl bg-white shadow-sm">
+                                            <span className="text-6xl mb-6" style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.15))' }}>{q.emoji}</span>
+                                            <div className="flex gap-3">
+                                                {q.splitText.map((char, k) => (
+                                                    char === '_' ? 
+                                                    <div key={k} className="w-10 h-12 border-b-4 border-gray-400"></div> : 
+                                                    <div key={k} className="w-10 h-12 flex justify-center items-end font-extrabold text-4xl uppercase text-gray-700">{char}</div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            )}
 
-                    {/* RENDERER: SUKU KATA (BM) */}
-                    {data.type === 'sukukata' && (
-                        <div className="flex flex-col gap-6">
-                            {data.items.map((q, i) => (
-                                <div key={i} className="flex items-center bg-blue-50 p-3 rounded-xl border-2 border-blue-200">
-                                    <span className="text-5xl mr-6 bg-white p-2 rounded-lg shadow-sm">{q.emoji}</span>
-                                    <div className="flex items-center gap-2 font-bold text-3xl">
-                                        {q.sk.map((s, k) => <React.Fragment key={k}><div className="border-2 border-dashed border-blue-400 px-4 py-2 bg-white rounded">{s}</div>{k < q.sk.length-1 && <span>+</span>}</React.Fragment>)}
-                                        <span>=</span>
-                                        <div className="border-b-4 border-blue-600 w-48 h-12 bg-white rounded"></div>
-                                    </div>
+                            {/* 5. SUKU KATA (BM) */}
+                            {worksheetData.type === 'sukukata' && (
+                                <div className="flex flex-col h-full justify-between">
+                                    {worksheetData.items.map((q, idx) => (
+                                        <div key={idx} className="flex items-center bg-blue-50 p-4 rounded-3xl border-2 border-blue-100 shadow-sm">
+                                            <span className="text-6xl mr-6 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">{q.emoji}</span>
+                                            <div className="flex items-center gap-3 font-extrabold text-3xl text-gray-700 uppercase">
+                                                {q.sk.map((s, k) => (
+                                                    <React.Fragment key={k}>
+                                                        <div className="border-4 border-dashed border-blue-300 px-5 py-3 bg-white rounded-xl shadow-inner tracking-widest">{s}</div>
+                                                        {k < q.sk.length - 1 && <span className="text-blue-400">+</span>}
+                                                    </React.Fragment>
+                                                ))}
+                                                <span className="text-gray-400">=</span>
+                                                <div className="border-b-4 border-gray-500 w-48 h-12 bg-white rounded-md"></div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            )}
 
-                     {/* RENDERER: TAMBAH / TOLAK */}
-                    {['tambah','tolak'].includes(data.type) && (
-                        <div className="flex flex-col gap-4">
-                            {data.items.map((q, i) => (
-                                <div key={i} className="flex items-center justify-around bg-orange-50 border-2 border-orange-200 p-4 rounded-2xl">
-                                    <div className="w-24 flex justify-center flex-wrap">{Array(q.n1).fill().map((_,j)=><span key={j} className="text-3xl">{q.emoji}</span>)}</div>
-                                    <div className="text-5xl font-black text-orange-500">{q.op}</div>
-                                    <div className="w-24 flex justify-center flex-wrap">{Array(q.n2).fill().map((_,j)=><span key={j} className="text-3xl">{q.emoji}</span>)}</div>
-                                    <div className="text-5xl font-black">=</div>
-                                    <div className="w-20 h-20 border-4 border-orange-300 rounded-xl bg-white"></div>
+                            {/* 6. TAMBAH & TOLAK */}
+                            {['tambah', 'tolak'].includes(worksheetData.type) && (
+                                <div className="flex flex-col h-full justify-between">
+                                    {worksheetData.items.map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between w-full h-[100px] bg-gray-50 rounded-[2rem] p-4 border-2 border-white shadow-sm">
+                                            <div className="flex flex-wrap justify-center items-center gap-1 w-32 bg-white h-full rounded-2xl border-2 border-gray-200 shadow-sm">
+                                                {Array.from({ length: item.c1 }).map((_, i) => <span key={`a${i}`} className="text-3xl">{item.emoji}</span>)}
+                                            </div>
+                                            <div className={`text-6xl font-black ${worksheetData.type === 'tambah' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                {item.op}
+                                            </div>
+                                            <div className="flex flex-wrap justify-center items-center gap-1 w-32 bg-white h-full rounded-2xl border-2 border-gray-200 shadow-sm">
+                                                {Array.from({ length: item.c2 }).map((_, i) => <span key={`b${i}`} className="text-3xl">{item.emoji}</span>)}
+                                            </div>
+                                            <div className="text-5xl font-black text-gray-400">=</div>
+                                            <div className="w-24 h-full border-4 border-gray-300 bg-white rounded-2xl shadow-inner"></div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                            )}
 
+                        </div>
+
+                        {/* Footer Print */}
+                        <div className="absolute bottom-4 w-[calc(100%-30mm)] text-center text-gray-400 font-bold text-sm tracking-widest">
+                            🌟 SYABAS! TERUSKAN USAHA! 🌟
+                        </div>
+                    </div>
                 </div>
-            </div>
-        );
-    }
+            );
+        }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
 
