@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penjana Lembaran Kerja Prasekolah</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js untuk state management (menggantikan React) -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    <!-- Font Arab -->
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        .font-arabic { font-family: 'Amiri', serif; line-height: 1.5; }
+        @media print {
+            body { background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            @page { size: A4 portrait; margin: 0; }
+            .a4-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; border-radius: 0 !important; }
+        }
+        /* Hide scrollbar for clean A4 look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-emerald-50 font-sans text-gray-900 pb-10 min-h-screen" x-data="worksheetApp()">
+
+    <!-- PANEL KAWALAN (Sembunyi waktu cetak) -->
+    <div class="no-print bg-white shadow-xl p-6 mb-8 rounded-b-2xl max-w-5xl mx-auto border-t-8 border-emerald-500">
+        <h1 class="text-3xl font-extrabold text-center mb-6 text-emerald-600 flex items-center justify-center gap-2">
+            ✅ Penjana Lembaran Pra
+        </h1>
+        
+        <!-- 1. Subject -->
+        <div class="mb-5">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">1. Pilih Subjek</p>
+            <div class="flex flex-wrap justify-center gap-2">
+                <template x-for="sub in subjects" :key="sub.id">
+                    <button @click="setSubject(sub.id)"
+                        :class="activeSubject === sub.id ? 'bg-emerald-500 text-white shadow-md transform scale-105' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'"
+                        class="px-5 py-2.5 rounded-xl font-bold text-sm transition-all" x-text="sub.name">
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        <!-- 2. Subtopics (Arab & Sains) -->
+        <div x-show="currentSubjectHasSubtopics()" class="mb-5 bg-emerald-50 p-4 rounded-xl border border-emerald-100" style="display: none;">
+            <p class="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-3 text-center flex items-center justify-center gap-2">
+                📖 Topik Khusus <span x-text="getCurrentSubjectName()"></span>
+            </p>
+            <div class="flex flex-wrap justify-center gap-2">
+                <template x-for="st in getCurrentSubtopics()" :key="st">
+                    <button @click="activeSubtopic = st; generateWorksheet()"
+                        :class="activeSubtopic === st ? 'bg-amber-400 text-amber-900 shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'"
+                        class="px-4 py-1.5 rounded-full font-semibold text-sm transition-all" x-text="subtopicLabels[st]">
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        <!-- 3. Pattern -->
+        <div class="mb-6 border-t pt-5">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 text-center">2. Pilih Corak Soalan</p>
+            <div class="flex flex-wrap justify-center gap-3">
+                <button @click="setPattern('pilih')" :class="activePattern === 'pilih' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500'" class="px-4 py-2 rounded-full border-2 font-bold hover:bg-gray-50">Tandakan ✓</button>
+                <button @click="setPattern('suaikan')" :class="activePattern === 'suaikan' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500'" class="px-4 py-2 rounded-full border-2 font-bold hover:bg-gray-50">Suaikan Garis</button>
+                <button @click="setPattern('tulis')" :class="activePattern === 'tulis' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-500'" class="px-4 py-2 rounded-full border-2 font-bold hover:bg-gray-50">Tulis Jawapan</button>
+                
+                <!-- Math Only Buttons -->
+                <template x-if="activeSubject === 'math'">
+                    <button @click="setPattern('tambah')" :class="activePattern === 'tambah' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-gray-200 text-gray-500'" class="px-4 py-2 rounded-full border-2 font-bold hover:bg-gray-50">Operasi Tambah (+)</button>
+                </template>
+                <template x-if="activeSubject === 'math'">
+                    <button @click="setPattern('tolak')" :class="activePattern === 'tolak' ? 'border-rose-500 bg-rose-50 text-rose-700' : 'border-gray-200 text-gray-500'" class="px-4 py-2 rounded-full border-2 font-bold hover:bg-gray-50">Operasi Tolak (-)</button>
+                </template>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-center gap-4 border-t pt-6 bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-xl">
+            <button @click="generateWorksheet()" class="flex items-center gap-2 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-bold rounded-xl shadow-md transition-transform hover:scale-105 active:scale-95">
+                🔄 Jana Semula
+            </button>
+            <button onclick="window.print()" class="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-transform hover:scale-105 active:scale-95">
+                🖨️ Cetak (Saiz A4)
+            </button>
+        </div>
+    </div>
+
+    <!-- KAWASAN LEMBARAN A4 -->
+    <div class="a4-page max-w-[210mm] min-h-[297mm] bg-white mx-auto shadow-2xl p-[15mm] border border-gray-200 relative overflow-hidden rounded-md">
+        
+        <!-- Hiasan -->
+        <div class="absolute top-0 left-0 w-full h-4 bg-gradient-to-r from-emerald-400 via-amber-300 to-sky-400 opacity-90"></div>
+        <div class="absolute top-4 left-4 text-3xl opacity-20">✏️</div>
+        <div class="absolute top-10 right-10 text-3xl opacity-20">🎨</div>
+
+        <!-- Header (Nama/Tarikh) -->
+        <div class="flex justify-between items-end border-b-2 border-dashed border-gray-400 pb-2 mb-6 text-lg font-bold font-sans mt-4">
+            <div class="flex gap-2 w-7/12 items-end">
+                <span class="text-gray-800">Nama:</span>
+                <div class="border-b-2 border-gray-700 flex-1"></div>
+            </div>
+            <div class="flex gap-2 w-4/12 items-end">
+                <span class="text-gray-800">Tarikh:</span>
+                <div class="border-b-2 border-gray-700 flex-1"></div>
+            </div>
+        </div>
+
+        <!-- Title Section -->
+        <div class="text-center mb-8 bg-emerald-50 py-3 rounded-2xl border-2 border-emerald-100">
+            <h2 class="text-4xl font-extrabold tracking-wide mb-2 text-emerald-700 uppercase" x-text="getFullTitle()"></h2>
+            <p :class="isRTL() ? 'font-arabic text-2xl' : ''" :dir="isRTL() ? 'rtl' : 'ltr'" class="text-xl font-bold text-gray-700" x-text="getInstructionText()"></p>
+        </div>
+
+        <!-- RENDER SOALAN: PILIH -->
+        <template x-if="worksheetType === 'pilih'">
+            <div class="grid grid-cols-2 gap-x-6 gap-y-7 px-2">
+                <template x-for="(q, idx) in worksheetItems" :key="idx">
+                    <div class="flex flex-col border-4 border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                        <div class="h-32 bg-white flex flex-wrap justify-center items-center gap-1 p-2 border-b-4 border-gray-100 relative">
+                            <template x-for="i in q.count">
+                                <span :class="q.count > 4 ? 'text-4xl' : 'text-5xl'" style="filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.1));" x-text="q.emoji"></span>
+                            </template>
+                        </div>
+                        <template x-for="(opt, i) in q.options">
+                            <div class="flex h-12 bg-gray-50" :class="i === 0 ? 'border-b-2 border-gray-200' : ''">
+                                <div class="flex-1 flex items-center px-4 font-bold text-gray-800"
+                                     :class="[isRTL() ? 'justify-end font-arabic text-3xl' : 'justify-center text-2xl', activeSubject === 'sains' ? 'text-xl' : '']"
+                                     :dir="isRTL() ? 'rtl' : 'ltr'" x-text="opt"></div>
+                                <div class="w-14 border-l-4 border-white flex justify-center items-center bg-gray-100">
+                                    <div class="w-7 h-7 border-4 border-white rounded-md shadow-inner bg-white"></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- RENDER SOALAN: SUAIKAN -->
+        <template x-if="worksheetType === 'suaikan'">
+            <div class="flex justify-between w-full mt-2 px-8 h-[700px] relative">
+                <!-- Lajur Kiri -->
+                <div class="flex flex-col justify-between h-full w-[45%]">
+                    <template x-for="(item, idx) in worksheetLeft" :key="'l'+idx">
+                        <div class="flex items-center gap-4">
+                            <div class="w-40 h-[100px] border-4 border-emerald-100 rounded-2xl flex flex-wrap justify-center items-center p-2 bg-white shadow-sm">
+                                <template x-for="i in item.count">
+                                    <span :class="item.count > 4 ? 'text-3xl' : 'text-4xl'" x-text="item.emoji"></span>
+                                </template>
+                            </div>
+                            <div class="w-4 h-4 rounded-full bg-emerald-400 shadow-md"></div>
+                        </div>
+                    </template>
+                </div>
+                <!-- Lajur Kanan -->
+                <div class="flex flex-col justify-between h-full w-[45%] items-end">
+                    <template x-for="(item, idx) in worksheetRight" :key="'r'+idx">
+                        <div class="flex items-center gap-4">
+                            <div class="w-4 h-4 rounded-full bg-amber-400 shadow-md"></div>
+                            <div class="w-48 h-[100px] border-4 border-amber-100 rounded-2xl flex justify-center items-center font-extrabold text-gray-800 p-4 text-center bg-white shadow-sm"
+                                 :class="isRTL() ? 'font-arabic text-3xl' : 'text-2xl'" :dir="isRTL() ? 'rtl' : 'ltr'" x-text="item.text">
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <!-- RENDER SOALAN: TULIS -->
+        <template x-if="worksheetType === 'tulis'">
+            <div class="flex flex-col gap-5 mt-2 px-4">
+                <template x-for="(item, idx) in worksheetItems" :key="idx">
+                    <div class="flex items-center w-full gap-6">
+                        <div class="w-48 h-28 border-4 border-gray-200 rounded-2xl flex flex-wrap justify-center items-center p-3 shrink-0 bg-gray-50 shadow-sm">
+                            <template x-for="i in item.count">
+                                <span :class="item.count > 4 ? 'text-3xl' : 'text-4xl'" x-text="item.emoji"></span>
+                            </template>
+                        </div>
+                        <div class="flex-1 flex items-end pb-3">
+                            <template x-if="activeSubject === 'math'">
+                                <div class="w-24 h-24 border-4 border-gray-300 rounded-2xl ml-4 bg-white shadow-inner"></div>
+                            </template>
+                            <template x-if="activeSubject !== 'math'">
+                                <div class="w-full h-16 border-b-4 border-dashed border-gray-400 ml-4 relative">
+                                    <div class="absolute bottom-4 w-full border-b border-gray-200"></div>
+                                    <div class="absolute bottom-8 w-full border-b border-dashed border-gray-300"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- RENDER SOALAN: TAMBAH / TOLAK -->
+        <template x-if="worksheetType === 'tambah' || worksheetType === 'tolak'">
+            <div class="flex flex-col gap-8 mt-4 px-4">
+                <template x-for="(item, idx) in worksheetItems" :key="idx">
+                    <div class="flex items-center justify-between w-full h-32 bg-gray-50 rounded-3xl p-4 border-2 border-white shadow-sm">
+                        <div class="flex flex-wrap justify-center items-center gap-1 w-32 bg-white h-full rounded-2xl border-2 border-gray-200 shadow-sm">
+                            <template x-for="i in item.c1">
+                                <span class="text-3xl" x-text="item.emoji"></span>
+                            </template>
+                        </div>
+                        <div class="text-6xl font-black" :class="worksheetType === 'tambah' ? 'text-amber-500' : 'text-rose-500'" x-text="worksheetType === 'tambah' ? '+' : '-'"></div>
+                        <div class="flex flex-wrap justify-center items-center gap-1 w-32 bg-white h-full rounded-2xl border-2 border-gray-200 shadow-sm">
+                            <template x-for="i in item.c2">
+                                <span class="text-3xl" x-text="item.emoji"></span>
+                            </template>
+                        </div>
+                        <div class="text-5xl font-black text-gray-400">=</div>
+                        <div class="w-28 h-24 border-4 border-gray-300 bg-white rounded-2xl shadow-inner"></div>
+                    </div>
+                </template>
+            </div>
+        </template>
+
+        <!-- Footer -->
+        <div class="absolute bottom-6 w-[calc(100%-30mm)] text-center text-gray-500 font-bold text-xl flex justify-center items-center gap-2">
+            🌟 <span class="tracking-wide">SYABAS! TERUSKAN USAHA!</span> 🌟
+        </div>
+
+    </div>
+
+    <!-- Script Logik Utama -->
+    <script>
+        // Pangkalan Data
+        const dbGeneral = [
+            { emoji: '🍎', bm: 'Epal', eng: 'Apple', jawi: 'ايڤل' },
+            { emoji: '🚗', bm: 'Kereta', eng: 'Car', jawi: 'کريتا' },
+            { emoji: '🐈', bm: 'Kucing', eng: 'Cat', jawi: 'کوچيڠ' },
+            { emoji: '👕', bm: 'Baju', eng: 'Shirt', jawi: 'باجو' },
+            { emoji: '📖', bm: 'Buku', eng: 'Book', jawi: 'بوکو' },
+            { emoji: '🐟', bm: 'Ikan', eng: 'Fish', jawi: 'ايکن' },
+            { emoji: '🌺', bm: 'Bunga', eng: 'Flower', jawi: 'بوڠا' },
+            { emoji: '☀️', bm: 'Matahari', eng: 'Sun', jawi: 'ماتاهاري' },
+            { emoji: '🍃', bm: 'Daun', eng: 'Leaf', jawi: 'داون' },
+            { emoji: '☔', bm: 'Payung', eng: 'Umbrella', jawi: 'ڤايوڠ' },
+            { emoji: '🦅', bm: 'Burung', eng: 'Bird', jawi: 'بوروڠ' },
+            { emoji: '🥕', bm: 'Lobak', eng: 'Carrot', jawi: 'لوبق' },
+            { emoji: '✏️', bm: 'Pensel', eng: 'Pencil', jawi: 'ڤينسيل' },
+            { emoji: '⭐', bm: 'Bintang', eng: 'Star', jawi: 'بينتڠ' },
+        ];
+        const dbArab = {
+            nombor: [{ emoji: '1️⃣', arab: 'وَاحِد' }, { emoji: '2️⃣', arab: 'اِثْنَان' }, { emoji: '3️⃣', arab: 'ثَلَاثَة' }, { emoji: '4️⃣', arab: 'أَرْبَعَة' }, { emoji: '5️⃣', arab: 'خَمْسَة' }, { emoji: '6️⃣', arab: 'سِتَّة' }, { emoji: '7️⃣', arab: 'سَبْعَة' }, { emoji: '8️⃣', arab: 'ثَمَانِيَة' }, { emoji: '9️⃣', arab: 'تِسْعَة' }, { emoji: '🔟', arab: 'عَشَرَة' }],
+            keluarga: [{ emoji: '👨', arab: 'أَب' }, { emoji: '👩', arab: 'أُم' }, { emoji: '👦', arab: 'أَخ' }, { emoji: '👧', arab: 'أُخْت' }, { emoji: '👴', arab: 'جَدّ' }, { emoji: '👵', arab: 'جَدَّة' }],
+            badan: [{ emoji: '👁️', arab: 'عَيْن' }, { emoji: '👂', arab: 'أُذُن' }, { emoji: '👃', arab: 'أَنْف' }, { emoji: '👄', arab: 'فَم' }, { emoji: '✋', arab: 'يَد' }, { emoji: '🦶', arab: 'رِجْل' }],
+            sekolah: [{ emoji: '📖', arab: 'كِتَاب' }, { emoji: '🖊️', arab: 'قَلَم' }, { emoji: '🎒', arab: 'حَقِيبَة' }, { emoji: '📏', arab: 'مِسْطَرَة' }, { emoji: '📝', arab: 'وَرَقَة' }, { emoji: '✂️', arab: 'مِقَصّ' }],
+            warna: [{ emoji: '🔴', arab: 'أَحْمَر' }, { emoji: '🔵', arab: 'أَزْرَق' }, { emoji: '🟢', arab: 'أَخْضَر' }, { emoji: '🟡', arab: 'أَصْفَر' }, { emoji: '⚫', arab: 'أَسْوَد' }, { emoji: '⚪', arab: 'أَبْيَض' }]
+        };
+        const dbSains = {
+            hidup: [{ emoji: '🐈', sains: 'Benda Hidup' }, { emoji: '🌳', sains: 'Benda Hidup' }, { emoji: '👦', sains: 'Benda Hidup' }, { emoji: '🦅', sains: 'Benda Hidup' }, { emoji: '🪨', sains: 'Bukan Hidup' }, { emoji: '🚗', sains: 'Bukan Hidup' }, { emoji: '📖', sains: 'Bukan Hidup' }, { emoji: '🧸', sains: 'Bukan Hidup' }],
+            bahagian: [{ emoji: '🍃', sains: 'Daun' }, { emoji: '🌺', sains: 'Bunga' }, { emoji: '🌳', sains: 'Batang' }, { emoji: '🦅', sains: 'Sayap' }, { emoji: '🐈', sains: 'Ekor' }, { emoji: '🐠', sains: 'Sirip' }, { emoji: '🐘', sains: 'Gading' }, { emoji: '🦆', sains: 'Paruh' }],
+            serapan: [{ emoji: '🧽', sains: 'Menyerap Air' }, { emoji: '👕', sains: 'Menyerap Air' }, { emoji: '🧻', sains: 'Menyerap Air' }, { emoji: '🧦', sains: 'Menyerap Air' }, { emoji: '☔', sains: 'Kalis Air' }, { emoji: '🛍️', sains: 'Kalis Air' }, { emoji: '👢', sains: 'Kalis Air' }, { emoji: '🧤', sains: 'Kalis Air' }],
+            makanan: [{ emoji: '🍎', sains: 'Makanan Sihat' }, { emoji: '🥦', sains: 'Makanan Sihat' }, { emoji: '🥛', sains: 'Makanan Sihat' }, { emoji: '🥕', sains: 'Makanan Sihat' }, { emoji: '🍬', sains: 'Tidak Sihat' }, { emoji: '🍩', sains: 'Tidak Sihat' }, { emoji: '🍟', sains: 'Tidak Sihat' }, { emoji: '🥤', sains: 'Tidak Sihat' }]
+        };
+
+        const instructions = {
+            pilih: { bm: 'Tandakan (✓) pada jawapan yang betul.', eng: 'Tick (✓) the correct answer.', jawi: 'تنداكن (✓) ڤد جواڤن يڠ بتول.', math: 'Kira dan tandakan (✓) jawapan yang betul.', arab: 'ضَعْ عَلَامَة (✓) عَلَى الإِجَابَةِ الصَّحِيحَةِ.', sains: 'Tandakan (✓) pada kategori yang betul.' },
+            suaikan: { bm: 'Suaikan gambar dengan padanan yang betul.', eng: 'Match the pictures correctly.', jawi: 'سوايکن ݢمبر دڠن ڤادنن يڠ بتول.', math: 'Kira dan suaikan dengan nombor yang betul.', arab: 'صِلِ الصُّورَةَ بِالكَلِمَةِ المُنَاسِبَةِ.', sains: 'Suaikan gambar dengan fakta yang betul.' },
+            tulis: { bm: 'Namakan gambar di bawah.', eng: 'Write the correct word for each picture.', jawi: 'توليسکن نام ݢمبر دباوه.', math: 'Kira dan tuliskan nombor yang betul.', arab: 'اُكْتُبِ الكَلِمَةَ المُنَاسِبَةَ لِكُلِّ صُورَةٍ.', sains: 'Tuliskan ciri/kategori yang betul.' },
+            tambah: { math: 'Selesaikan operasi tambah di bawah.' }, tolak: { math: 'Selesaikan operasi tolak di bawah.' }
+        };
+
+        function worksheetApp() {
+            return {
+                subjects: [
+                    { id: 'bm', name: 'Bahasa Melayu' }, { id: 'eng', name: 'Bahasa Inggeris' }, { id: 'jawi', name: 'Jawi' },
+                    { id: 'math', name: 'Matematik' },
+                    { id: 'arab', name: 'Bahasa Arab', subtopics: ['nombor', 'keluarga', 'badan', 'sekolah', 'warna'] },
+                    { id: 'sains', name: 'Sains', subtopics: ['hidup', 'bahagian', 'serapan', 'makanan'] }
+                ],
+                subtopicLabels: {
+                    nombor: 'Nombor 1-10', keluarga: 'Keluarga', badan: 'Anggota Badan', sekolah: 'Peralatan', warna: 'Warna',
+                    hidup: 'Benda Hidup/Bukan', bahagian: 'Bahagian Tubuh', serapan: 'Serapan Air', makanan: 'Makanan Sihat/Tidak'
+                },
+                activeSubject: 'bm', activeSubtopic: '', activePattern: 'pilih',
+                worksheetType: 'pilih', worksheetItems: [], worksheetLeft: [], worksheetRight: [],
+
+                init() { this.generateWorksheet(); },
+                isRTL() { return this.activeSubject === 'jawi' || this.activeSubject === 'arab'; },
+                
+                currentSubjectHasSubtopics() {
+                    const s = this.subjects.find(s => s.id === this.activeSubject);
+                    return s && s.subtopics;
+                },
+                getCurrentSubjectName() { return this.subjects.find(s => s.id === this.activeSubject).name; },
+                getCurrentSubtopics() { return this.subjects.find(s => s.id === this.activeSubject).subtopics || []; },
+                
+                getFullTitle() {
+                    let title = this.getCurrentSubjectName();
+                    if (this.activeSubtopic) title += ` - ${this.subtopicLabels[this.activeSubtopic]}`;
+                    return title;
+                },
+                getInstructionText() {
+                    return instructions[this.activePattern]?.[this.activeSubject] || 'Sila jawab soalan di bawah.';
+                },
+
+                setSubject(id) {
+                    this.activeSubject = id;
+                    this.activeSubtopic = (id === 'arab') ? 'nombor' : (id === 'sains') ? 'hidup' : '';
+                    if (id !== 'math' && (this.activePattern === 'tambah' || this.activePattern === 'tolak')) {
+                        this.activePattern = 'pilih';
+                    }
+                    this.generateWorksheet();
+                },
+                setPattern(p) { this.activePattern = p; this.generateWorksheet(); },
+
+                // Utils
+                shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); },
+                randItem(arr) { return arr[Math.floor(Math.random() * arr.length)]; },
+                getUniqueItems(arr, key) {
+                    const unique = [];
+                    const seen = new Set();
+                    for (const item of arr) {
+                        const val = item[key];
+                        if (!seen.has(val) && val) { seen.add(val); unique.push(item); }
+                    }
+                    return unique;
+                },
+
+                generateWorksheet() {
+                    this.worksheetType = this.activePattern;
+                    const isMath = this.activeSubject === 'math';
+                    const targetLang = this.activeSubject;
+                    
+                    let sourceDb = dbGeneral;
+                    if (this.activeSubject === 'arab') sourceDb = dbArab[this.activeSubtopic || 'nombor'];
+                    if (this.activeSubject === 'sains') sourceDb = dbSains[this.activeSubtopic || 'hidup'];
+
+                    if (this.activePattern === 'pilih') {
+                        const numQs = 6;
+                        let uniqueItems = this.getUniqueItems(sourceDb, 'emoji');
+                        let selected = this.shuffle(uniqueItems).slice(0, numQs);
+                        while(selected.length < numQs && sourceDb.length > 0) selected.push(this.randItem(sourceDb));
+
+                        this.worksheetItems = selected.map(item => {
+                            let count = isMath ? Math.floor(Math.random() * 8) + 2 : 1;
+                            let correctAnswer = isMath ? count.toString() : item[targetLang];
+                            let wrongAnswer = '';
+
+                            if (isMath) {
+                                let wrongNum = count + (Math.random() > 0.5 ? 1 : -1);
+                                if (wrongNum < 1) wrongNum = count + 2;
+                                wrongAnswer = wrongNum.toString();
+                            } else {
+                                let optionsAvailable = [...new Set(sourceDb.map(i => i[targetLang]))];
+                                if (this.activeSubject === 'sains' && optionsAvailable.length === 2) {
+                                    wrongAnswer = optionsAvailable.find(opt => opt !== correctAnswer) || '';
+                                } else {
+                                    let wrongItem = this.randItem(sourceDb);
+                                    let attempts = 0;
+                                    while(wrongItem[targetLang] === correctAnswer && attempts < 10) {
+                                        wrongItem = this.randItem(sourceDb); attempts++;
+                                    }
+                                    wrongAnswer = wrongItem[targetLang];
+                                }
+                            }
+                            return { emoji: item.emoji, count, options: this.shuffle([correctAnswer, wrongAnswer]) };
+                        });
+                    }
+                    
+                    else if (this.activePattern === 'suaikan') {
+                        const numQs = 5;
+                        let uniqueItems = this.getUniqueItems(sourceDb, targetLang);
+                        let selected = this.shuffle(uniqueItems).slice(0, numQs);
+                        
+                        this.worksheetLeft = selected.map(item => ({
+                            emoji: item.emoji, count: isMath ? Math.floor(Math.random() * 8) + 2 : 1, originalId: item.emoji, answerText: item[targetLang]
+                        }));
+                        this.worksheetRight = this.shuffle(this.worksheetLeft.map(l => ({
+                            id: l.originalId, text: isMath ? l.count.toString() : l.answerText
+                        })));
+                    }
+                    
+                    else if (this.activePattern === 'tulis') {
+                        const numQs = 6;
+                        let uniqueItems = this.getUniqueItems(sourceDb, targetLang);
+                        let selected = this.shuffle(uniqueItems).slice(0, numQs);
+                        this.worksheetItems = selected.map(i => ({ emoji: i.emoji, count: isMath ? Math.floor(Math.random() * 8) + 2 : 1 }));
+                    }
+                    
+                    else if (this.activePattern === 'tambah') {
+                        let qs = [];
+                        for(let i=0; i<5; i++) qs.push({ emoji: this.randItem(dbGeneral).emoji, c1: Math.floor(Math.random() * 5) + 1, c2: Math.floor(Math.random() * 5) + 1 });
+                        this.worksheetItems = qs;
+                    }
+                    else if (this.activePattern === 'tolak') {
+                        let qs = [];
+                        for(let i=0; i<5; i++) {
+                            let t = Math.floor(Math.random() * 6) + 3;
+                            let s = Math.floor(Math.random() * (t - 1)) + 1;
+                            qs.push({ emoji: this.randItem(dbGeneral).emoji, c1: t, c2: s });
+                        }
+                        this.worksheetItems = qs;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
