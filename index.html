@@ -3,33 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Penjana Lembaran Kerja Prasekolah V6 (Final QA)</title>
+    <title>Penjana Lembaran Kerja Prasekolah V9 (Fixed Spacing)</title>
     
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & Babel Standalone -->
+    <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Font Jawi/Arab & Font Surih -->
+    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Mali:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
         .font-arabic { font-family: 'Amiri', serif; line-height: 1.6; }
         .font-surih { font-family: 'Mali', cursive; color: #cbd5e1; letter-spacing: 4px; }
         
-        /* Tetapan khusus cetakan A4 */
         @media print {
             body { background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; padding: 0; }
             .no-print { display: none !important; }
             @page { size: A4 portrait; margin: 0; }
             .a4-page { 
                 box-shadow: none !important; border: none !important; margin: 0 !important; 
-                width: 210mm !important; height: 297mm !important; 
+                width: 210mm !important; 
+                height: 297mm !important; 
+                max-height: 297mm !important; 
                 padding: 12mm 15mm !important; 
                 page-break-after: avoid; page-break-inside: avoid;
+                overflow: hidden !important; 
             }
         }
     </style>
@@ -86,7 +88,7 @@
 
         const subtopicLabels = {
             nombor: 'Nombor 1-10', keluarga: 'Keluarga Saya', badan: 'Anggota Badan', sekolah: 'Peralatan Sekolah', warna: 'Warna',
-            hidup: 'Hidup / Bukan Hidup', bahagian: 'Bahagian Tubuh', serapan: 'Serapan Air', makanan: 'Makanan Sihat & Tidak Sihat'
+            hidup: 'Hidup / Bukan Hidup', bahagian: 'Bahagian Tubuh', serapan: 'Serapan Air', makanan: 'Makanan Sihat/Tidak'
         };
 
         const getInstruction = (subjectId, pattern) => {
@@ -94,7 +96,7 @@
                 pilih: { bm: 'Tandakan (✓) pada jawapan yang betul.', eng: 'Tick (✓) the correct answer.', jawi: 'تنداكن (✓) ڤد جواڤن يڠ بتول.', math: 'Kira dan tandakan (✓) jawapan yang betul.', arab: 'ضَعْ عَلَامَة (✓) عَلَى الإِجَابَةِ الصَّحِيحَةِ.', sains: 'Tandakan (✓) pada kategori yang betul.' },
                 bulatkan: { bm: 'Bulatkan jawapan yang betul.', eng: 'Circle the correct answer.', jawi: 'بولتكن جواڤن يڠ بتول.', math: 'Kira dan bulatkan nombor yang betul.', arab: 'ضَعْ دَائِرَةً حَوْلَ الإِجَابَةِ الصَّحِيحَةِ.', sains: 'Bulatkan kategori yang betul.' },
                 suaikan: { bm: 'Suaikan gambar dengan padanan yang betul.', eng: 'Match the pictures correctly.', jawi: 'سوايکن ݢمبر دڠن ڤادنن يڠ بتول.', math: 'Kira dan suaikan dengan nombor yang betul.', arab: 'صِلِ الصُّورَةَ بِالكَلِمَةِ المُنَاسِبَةِ.', sains: 'Suaikan gambar dengan fakta yang betul.' },
-                tulis: { bm: 'Tuliskan nama gambar di bawah.', eng: 'Write the correct word for each picture.', jawi: 'توليسکن نام ݢمبر دباوه.', math: 'Kira dan tuliskan nombor yang betul.', arab: 'اُكْتُبِ الكَلِمَةَ المُنَاسِبَةَ لِكُلِّ صُورَةٍ.', sains: 'Tuliskan kategori yang betul.' },
+                tulis: { bm: 'Tuliskan nama gambar di ruang disediakan.', eng: 'Write the correct word for each picture.', jawi: 'توليسکن نام ݢمبر دباوه.', math: 'Kira dan tuliskan nombor yang betul.', arab: 'اُكْتُبِ الكَلِمَةَ المُنَاسِبَةَ لِكُلِّ صُورَةٍ.', sains: 'Tuliskan kategori yang betul.' },
                 surih: { bm: 'Surih (trace) perkataan di bawah.', eng: 'Trace the words below.', jawi: 'سوريه ڤرکاتاءن دباوه.', arab: 'تَتَبَّعِ الكَلِمَاتِ.', sains: 'Surih (trace) perkataan di bawah.' },
                 lengkapkan: { bm: 'Isikan huruf yang tertinggal.', eng: 'Fill in the missing letters.', sains: 'Isikan huruf yang tertinggal.' },
                 sukukata: { bm: 'Gabungkan suku kata menjadi perkataan.' },
@@ -105,15 +107,21 @@
 
         const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
         const randItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        
         const createMissingLetters = (word) => {
             let letters = word.split('');
             let missingIndices = [];
-            let numMissing = Math.max(1, Math.floor(letters.length / 3));
-            while (missingIndices.length < numMissing) {
-                let idx = Math.floor(Math.random() * letters.length);
+            let eligibleIndices = letters.map((l, i) => l !== ' ' ? i : -1).filter(i => i !== -1);
+            let numMissing = Math.max(1, Math.floor(eligibleIndices.length / 3));
+            
+            while (missingIndices.length < numMissing && eligibleIndices.length > 0) {
+                let idx = eligibleIndices[Math.floor(Math.random() * eligibleIndices.length)];
                 if (!missingIndices.includes(idx)) missingIndices.push(idx);
             }
-            return letters.map((l, i) => missingIndices.includes(i) ? '_' : l);
+            return letters.map((l, i) => {
+                if (l === ' ') return ' ';
+                return missingIndices.includes(i) ? '_' : l;
+            });
         };
 
         function App() {
@@ -157,9 +165,8 @@
 
                 let newData = { type: activePattern, items: [] };
                 
-                // Menetapkan bilangan soalan
                 let numQs = 6; 
-                if (['suaikan', 'sukukata', 'tambah', 'tolak'].includes(activePattern)) numQs = 5;
+                if (['suaikan', 'sukukata', 'tambah', 'tolak', 'tulis', 'surih', 'lengkapkan'].includes(activePattern)) numQs = 5;
 
                 if (['pilih', 'bulatkan'].includes(activePattern)) {
                     let uniqueItems = [...new Map(db.map(item => [item.emoji, item])).values()];
@@ -253,10 +260,10 @@
             return (
                 <div className="w-full flex flex-col items-center">
                     
-                    {/* --- PANEL KAWALAN (Disediakan No Print) --- */}
+                    {/* --- PANEL KAWALAN --- */}
                     <div className="no-print bg-white shadow-xl p-6 mb-8 w-full max-w-5xl rounded-b-2xl border-t-8 border-emerald-500 z-20">
                         <h1 className="text-3xl font-extrabold text-center mb-6 text-emerald-600">
-                            ✅ Penjana Lembaran Pra V6 (QA Final)
+                            ✅ Penjana Lembaran Pra V9 (Kotak Tidak Melekat)
                         </h1>
                         
                         <div className="mb-5">
@@ -314,16 +321,13 @@
                     </div>
 
                     {/* --- KERTAS A4 UNTUK DICETAK --- */}
-                    <div className="a4-page bg-white shadow-2xl relative flex flex-col z-10 max-w-[210mm] w-[210mm] min-h-[297mm] p-[15mm] border border-gray-200 rounded-md">
+                    <div className="a4-page bg-white shadow-2xl relative flex flex-col z-10 max-w-[210mm] w-[210mm] min-h-[297mm] h-[297mm] max-h-[297mm] p-[15mm] border border-gray-200 rounded-md overflow-hidden">
                         
-                        {/* Hiasan Bucu */}
                         <div className="absolute top-0 left-0 w-full h-4 bg-gradient-to-r from-emerald-400 via-amber-300 to-sky-400 opacity-90 z-0"></div>
-                        <div className="absolute top-4 left-4 text-3xl opacity-20 z-0">✏️</div>
-                        <div className="absolute top-10 right-10 text-3xl opacity-20 z-0">🎨</div>
 
-                        {/* Bahagian Atas (Header & Tajuk) */}
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-end border-b-2 border-dashed border-gray-400 pb-2 mb-6 text-lg font-bold mt-2">
+                        {/* HEADER */}
+                        <div className="relative z-10 flex-none h-[120px]">
+                            <div className="flex justify-between items-end border-b-2 border-dashed border-gray-400 pb-2 mb-4 text-lg font-bold mt-2">
                                 <div className="flex gap-2 w-7/12 items-end">
                                     <span className="text-gray-800">Nama:</span>
                                     <div className="border-b-2 border-gray-700 flex-1"></div>
@@ -333,35 +337,33 @@
                                     <div className="border-b-2 border-gray-700 flex-1"></div>
                                 </div>
                             </div>
-
-                            <div className="text-center mb-8 bg-emerald-50 py-3 rounded-2xl border-2 border-emerald-100">
-                                <h2 className="text-4xl font-extrabold tracking-wide mb-2 text-emerald-700 uppercase">
+                            <div className="text-center bg-emerald-50 py-2 rounded-2xl border-2 border-emerald-100">
+                                <h2 className="text-3xl font-extrabold tracking-wide text-emerald-700 uppercase">
                                     {currentSubject.name} {activeSubtopic ? `- ${subtopicLabels[activeSubtopic]}` : ''}
                                 </h2>
-                                <p className={`text-xl font-bold text-gray-700 ${isRTL ? 'font-arabic text-2xl' : ''}`} dir={isRTL ? "rtl" : "ltr"}>
+                                <p className={`text-lg font-bold text-gray-700 ${isRTL ? 'font-arabic text-xl' : ''}`} dir={isRTL ? "rtl" : "ltr"}>
                                     {getInstruction(activeSubject, activePattern)}
                                 </p>
                             </div>
                         </div>
 
-                        {/* --- KAWASAN SOALAN UTAMA --- */}
-                        <div className="w-full relative z-10 flex-1 flex flex-col pb-4">
+                        {/* --- KAWASAN SOALAN (FLEX-1) --- */}
+                        <div className="w-full relative z-10 flex-1 flex flex-col mt-4">
                             
-                            {/* 1. TANDAKAN & BULATKAN (GRID) */}
+                            {/* 1. TANDAKAN & BULATKAN */}
                             {['pilih', 'bulatkan'].includes(worksheetData.type) && (
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-10 w-full">
+                                <div className="grid grid-cols-2 gap-x-8 gap-y-4 w-full h-full pb-2">
                                     {worksheetData.items.map((q, idx) => (
-                                        <div key={idx} className="flex flex-col border-4 border-gray-100 rounded-2xl overflow-hidden bg-gray-50 h-[170px] shadow-sm">
-                                            {/* Tinggi kotak dihadkan (fixed height) supaya tidak meregang melebih kertas */}
-                                            <div className="flex-1 bg-white flex flex-wrap justify-center items-center gap-1 p-2 border-b-4 border-gray-100">
+                                        <div key={idx} className="flex flex-col border-4 border-gray-100 rounded-2xl overflow-hidden bg-gray-50 h-[145px] shadow-sm">
+                                            <div className="flex-1 bg-white flex flex-wrap justify-center items-center gap-1 p-2 border-b-4 border-gray-100 overflow-hidden">
                                                 {Array.from({ length: q.count }).map((_, i) => (
-                                                    <span key={i} className={q.count > 4 ? "text-4xl" : "text-5xl"} style={{ filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.1))' }}>{q.emoji}</span>
+                                                    <span key={i} className={q.count > 4 ? "text-3xl" : "text-4xl"} style={{ filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.1))' }}>{q.emoji}</span>
                                                 ))}
                                             </div>
-                                            <div className={`flex w-full justify-around items-center h-[60px] ${isRTL ? 'font-arabic text-3xl' : 'text-2xl'} ${activeSubject === 'sains' ? 'text-lg font-bold' : 'font-extrabold'}`} dir={isRTL ? "rtl" : "ltr"}>
+                                            <div className={`flex w-full justify-around items-center h-[55px] ${isRTL ? 'font-arabic text-2xl' : 'text-xl'} font-bold`} dir={isRTL ? "rtl" : "ltr"}>
                                                 {q.options.map((opt, i) => (
                                                     <div key={i} className={`flex items-center gap-2 h-10 ${worksheetData.type === 'bulatkan' ? 'border-2 border-dashed border-gray-400 rounded-full px-4 bg-white' : ''}`}>
-                                                        {worksheetData.type === 'pilih' && <div className="w-6 h-6 border-2 border-gray-400 rounded bg-white"></div>}
+                                                        {worksheetData.type === 'pilih' && <div className="w-5 h-5 border-2 border-gray-400 rounded bg-white"></div>}
                                                         <span>{opt}</span>
                                                     </div>
                                                 ))}
@@ -371,118 +373,130 @@
                                 </div>
                             )}
 
-                            {/* 2. SUAIKAN (FLEX COL GAP) */}
+                            {/* 2. SUAIKAN - FIXED SPACING (Kotak tidak akan melekat) */}
                             {worksheetData.type === 'suaikan' && (
-                                <div className="flex justify-between w-full px-8">
-                                    {/* Spacing menggunakan gap-10 antara kotak */}
-                                    <div className="flex flex-col gap-10 w-[45%]">
-                                        {worksheetData.left?.map((item, idx) => (
-                                            <div key={idx} className="flex items-center gap-4">
-                                                <div className="flex-1 h-[90px] border-4 border-emerald-100 rounded-2xl flex flex-wrap justify-center items-center p-2 bg-white shadow-sm">
-                                                    {Array.from({ length: item.count }).map((_, i) => <span key={i} className={item.count > 4 ? "text-3xl" : "text-4xl"}>{item.emoji}</span>)}
-                                                </div>
-                                                <div className="w-4 h-4 rounded-full bg-emerald-400 shadow-md"></div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="flex flex-col gap-10 w-[45%] items-end">
-                                        {worksheetData.right?.map((item, idx) => (
-                                            <div key={idx} className="flex items-center gap-4 w-full justify-end">
-                                                <div className="w-4 h-4 rounded-full bg-amber-400 shadow-md"></div>
-                                                <div className={`flex-1 h-[90px] border-4 border-amber-100 rounded-2xl flex justify-center items-center text-2xl font-extrabold text-gray-800 p-4 text-center bg-white shadow-sm ${isRTL ? 'font-arabic text-3xl' : ''}`} dir={isRTL ? "rtl" : "ltr"}>{item.text}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* 3. TULIS & SURIH (GRID GAP) */}
-                            {['tulis', 'surih'].includes(worksheetData.type) && (
-                                <div className="grid grid-cols-2 gap-x-10 gap-y-12 w-full">
-                                    {worksheetData.items.map((item, idx) => (
-                                        <div key={idx} className="flex flex-col items-center w-full border-b-2 border-dashed border-gray-300 pb-2 h-[150px]">
-                                            <div className="w-full flex-1 border-4 border-gray-100 rounded-2xl flex flex-wrap justify-center items-center p-2 bg-gray-50 mb-3">
-                                                {Array.from({ length: item.count }).map((_, i) => <span key={i} className={item.count > 4 ? "text-3xl" : "text-4xl"}>{item.emoji}</span>)}
-                                            </div>
-                                            {worksheetData.type === 'tulis' ? (
-                                                activeSubject === 'math' ? (
-                                                    <div className="w-20 h-20 border-4 border-gray-300 rounded-2xl bg-white mb-1 shadow-inner"></div>
-                                                ) : (
-                                                    <div className="w-full h-12 border-b-4 border-gray-400 relative mb-1">
-                                                        <div className="absolute bottom-4 w-full border-b border-dashed border-gray-300"></div>
+                                <div className="flex justify-between w-full h-full px-8 flex-col flex-1 pb-4">
+                                    <div className="flex justify-between h-full w-full">
+                                        
+                                        {/* Kolum Kiri */}
+                                        <div className="flex flex-col justify-between h-full w-[40%]">
+                                            {worksheetData.left?.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-4 w-full">
+                                                    {/* Kotak Ditetapkan Tinggi (Fixed Height 85px) tanpa flex-1 supaya tidak memanjang */}
+                                                    <div className="w-full h-[85px] border-4 border-emerald-100 rounded-2xl flex flex-wrap justify-center items-center p-2 bg-white shadow-sm overflow-hidden">
+                                                        {Array.from({ length: item.count }).map((_, i) => <span key={i} className={item.count > 4 ? "text-2xl" : "text-4xl"}>{item.emoji}</span>)}
                                                     </div>
-                                                )
-                                            ) : (
-                                                <div className={`w-full text-center text-4xl font-surih font-bold mb-1 ${isRTL ? 'font-arabic' : ''}`} dir={isRTL ? "rtl" : "ltr"}>{item.text}</div>
-                                            )}
+                                                    <div className="w-4 h-4 rounded-full bg-emerald-400 shadow-md flex-shrink-0"></div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
+                                        
+                                        {/* Kolum Kanan */}
+                                        <div className="flex flex-col justify-between h-full w-[40%] items-end">
+                                            {worksheetData.right?.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-4 w-full justify-end">
+                                                    <div className="w-4 h-4 rounded-full bg-amber-400 shadow-md flex-shrink-0"></div>
+                                                    <div className={`w-full h-[85px] border-4 border-amber-100 rounded-2xl flex justify-center items-center text-xl font-extrabold text-gray-800 p-4 text-center bg-white shadow-sm ${isRTL ? 'font-arabic text-2xl' : ''}`} dir={isRTL ? "rtl" : "ltr"}>{item.text}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        
+                                    </div>
                                 </div>
                             )}
 
-                            {/* 4. LENGKAPKAH HURUF (GRID GAP) */}
-                            {worksheetData.type === 'lengkapkan' && (
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-12 w-full">
-                                    {worksheetData.items.map((q, idx) => (
-                                        <div key={idx} className="flex flex-col items-center justify-center border-4 border-gray-100 p-4 rounded-3xl bg-white h-[140px] shadow-sm">
-                                            <span className="text-5xl mb-4" style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.15))' }}>{q.emoji}</span>
-                                            <div className="flex gap-3">
-                                                {q.splitText.map((char, k) => (
-                                                    char === '_' ? 
-                                                    <div key={k} className="w-10 h-12 border-b-4 border-gray-400"></div> : 
-                                                    <div key={k} className="w-10 h-12 flex justify-center items-end font-extrabold text-4xl uppercase text-gray-700">{char}</div>
-                                                ))}
+                            {/* 3. TULIS & SURIH */}
+                            {['tulis', 'surih'].includes(worksheetData.type) && (
+                                <div className="flex flex-col justify-between h-full w-full px-4 pb-2 flex-1">
+                                    {worksheetData.items.map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-6 w-full h-[95px] border-b-2 border-dashed border-gray-300 pb-2">
+                                            <div className="w-36 h-[75px] border-4 border-gray-100 rounded-2xl flex flex-wrap justify-center items-center p-2 bg-gray-50 flex-shrink-0 shadow-sm overflow-hidden">
+                                                {Array.from({ length: item.count }).map((_, i) => <span key={i} className={item.count > 4 ? "text-2xl" : "text-3xl"}>{item.emoji}</span>)}
+                                            </div>
+                                            <div className="flex-1 h-full flex flex-col justify-end pb-2">
+                                                {worksheetData.type === 'tulis' ? (
+                                                    activeSubject === 'math' ? (
+                                                        <div className="w-16 h-16 border-4 border-gray-300 rounded-xl bg-white shadow-inner"></div>
+                                                    ) : (
+                                                        <div className="w-full h-10 border-b-4 border-gray-400 relative">
+                                                            <div className="absolute bottom-3 w-full border-b border-dashed border-gray-300"></div>
+                                                        </div>
+                                                    )
+                                                ) : (
+                                                    <div className={`w-full text-left text-4xl font-surih font-bold px-4 ${isRTL ? 'font-arabic text-right' : ''}`} dir={isRTL ? "rtl" : "ltr"}>{item.text}</div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             )}
 
-                            {/* 5. SUKU KATA (FLEX COL GAP) */}
-                            {worksheetData.type === 'sukukata' && (
-                                <div className="flex flex-col gap-10 w-full px-2">
+                            {/* 4. LENGKAPKAH HURUF */}
+                            {worksheetData.type === 'lengkapkan' && (
+                                <div className="flex flex-col justify-between h-full w-full px-2 pb-2 flex-1">
                                     {worksheetData.items.map((q, idx) => (
-                                        <div key={idx} className="flex items-center bg-blue-50 h-[100px] px-6 rounded-3xl border-2 border-blue-100 shadow-sm">
-                                            <span className="text-5xl mr-6 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">{q.emoji}</span>
-                                            <div className="flex items-center gap-3 font-extrabold text-2xl text-gray-700 uppercase">
+                                        <div key={idx} className="flex items-center gap-6 w-full h-[95px] border-b-2 border-dashed border-gray-300 pb-2">
+                                            <div className="w-32 h-[75px] border-4 border-emerald-100 rounded-2xl flex justify-center items-center bg-emerald-50 flex-shrink-0 shadow-sm">
+                                                <span className="text-4xl" style={{ filter: 'drop-shadow(0px 3px 5px rgba(0,0,0,0.15))' }}>{q.emoji}</span>
+                                            </div>
+                                            <div className="flex-1 flex flex-wrap gap-2 items-center justify-start pl-2">
+                                                {q.splitText.map((char, k) => {
+                                                    if (char === ' ') return <div key={k} className="w-6 h-10"></div>; 
+                                                    if (char === '_') return <div key={k} className="w-10 h-10 border-b-4 border-gray-400"></div>;
+                                                    return <div key={k} className="w-10 h-10 flex justify-center items-end font-extrabold text-3xl uppercase text-gray-700 tracking-wider">{char}</div>;
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* 5. SUKU KATA */}
+                            {worksheetData.type === 'sukukata' && (
+                                <div className="flex flex-col justify-between h-full w-full px-2 pb-4 flex-1">
+                                    {worksheetData.items.map((q, idx) => (
+                                        <div key={idx} className="flex items-center bg-blue-50 h-[85px] px-6 rounded-3xl border-2 border-blue-100 shadow-sm">
+                                            <span className="text-4xl mr-6 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">{q.emoji}</span>
+                                            <div className="flex items-center gap-3 font-extrabold text-xl text-gray-700 uppercase">
                                                 {q.sk.map((s, k) => (
                                                     <React.Fragment key={k}>
-                                                        <div className="border-4 border-dashed border-blue-300 px-5 py-2 bg-white rounded-xl shadow-inner tracking-widest">{s}</div>
+                                                        <div className="border-4 border-dashed border-blue-300 px-4 py-2 bg-white rounded-lg tracking-widest">{s}</div>
                                                         {k < q.sk.length - 1 && <span className="text-blue-400">+</span>}
                                                     </React.Fragment>
                                                 ))}
                                                 <span className="text-gray-400">=</span>
-                                                <div className="border-b-4 border-gray-500 w-40 h-12 bg-white rounded-md"></div>
+                                                <div className="border-b-4 border-gray-500 w-32 h-10 bg-white rounded-md"></div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             )}
 
-                            {/* 6. TAMBAH & TOLAK (FLEX COL GAP) */}
+                            {/* 6. TAMBAH & TOLAK */}
                             {['tambah', 'tolak'].includes(worksheetData.type) && (
-                                <div className="flex flex-col gap-8 w-full px-2">
+                                <div className="flex flex-col justify-between h-full w-full px-2 pb-4 flex-1">
                                     {worksheetData.items.map((item, idx) => (
-                                        <div key={idx} className="flex items-center justify-between w-full h-[110px] bg-gray-50 rounded-[2rem] p-4 border-2 border-white shadow-sm">
-                                            <div className="flex flex-wrap justify-center items-center gap-1 w-32 bg-white h-full rounded-2xl border-2 border-gray-200 shadow-sm">
+                                        <div key={idx} className="flex items-center justify-between w-full h-[95px] bg-gray-50 rounded-[2rem] p-4 border-2 border-white shadow-sm">
+                                            <div className="flex flex-wrap justify-center items-center gap-1 w-28 bg-white h-full rounded-2xl border-2 border-gray-200 overflow-hidden">
                                                 {Array.from({ length: item.c1 }).map((_, i) => <span key={`a${i}`} className="text-3xl">{item.emoji}</span>)}
                                             </div>
-                                            <div className={`text-6xl font-black ${worksheetData.type === 'tambah' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                            <div className={`text-5xl font-black ${worksheetData.type === 'tambah' ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                 {item.op}
                                             </div>
-                                            <div className="flex flex-wrap justify-center items-center gap-1 w-32 bg-white h-full rounded-2xl border-2 border-gray-200 shadow-sm">
+                                            <div className="flex flex-wrap justify-center items-center gap-1 w-28 bg-white h-full rounded-2xl border-2 border-gray-200 overflow-hidden">
                                                 {Array.from({ length: item.c2 }).map((_, i) => <span key={`b${i}`} className="text-3xl">{item.emoji}</span>)}
                                             </div>
-                                            <div className="text-5xl font-black text-gray-400">=</div>
-                                            <div className="w-24 h-full border-4 border-gray-300 bg-white rounded-2xl shadow-inner"></div>
+                                            <div className="text-4xl font-black text-gray-400">=</div>
+                                            <div className="w-20 h-full border-4 border-gray-300 bg-white rounded-2xl"></div>
                                         </div>
                                     ))}
                                 </div>
                             )}
+
                         </div>
 
                         {/* Footer Print */}
-                        <div className="relative z-10 text-center text-gray-400 font-bold text-sm tracking-widest mt-auto border-t border-gray-200 pt-3 pb-1">
+                        <div className="relative z-10 text-center text-gray-400 font-bold text-xs tracking-widest flex-none mt-2">
                             🌟 SYABAS! TERUSKAN USAHA! 🌟
                         </div>
                     </div>
